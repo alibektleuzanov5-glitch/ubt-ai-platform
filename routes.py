@@ -17,7 +17,7 @@ import models
 load_dotenv()
 
 # Router құру
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 # Қауіпсіздік баптаулары
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

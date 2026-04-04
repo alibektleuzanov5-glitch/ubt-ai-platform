@@ -5,12 +5,10 @@ from routes import router
 from database import engine, Base
 import uvicorn
 
-# Базаны құру
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# КҮШЕЙТІЛГЕН CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,9 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ОСЫ ЖОЛДЫ ТЕКСЕР: префикс міндетті түрде /api болуы керек
+# МІНЕ, ЕҢ МАҢЫЗДЫ ЖОЛ - /api осында тұр
 app.include_router(router, prefix="/api")
-
 
 @app.get("/")
 def home():
