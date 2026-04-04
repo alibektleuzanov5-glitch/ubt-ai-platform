@@ -10,18 +10,18 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# --- КҮШЕЙТІЛГЕН CORS БАПТАУЫ ---
+# КҮШЕЙТІЛГЕН CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Барлық сайттарға рұқсат
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # POST, GET, OPTIONS - бәріне рұқсат
-    allow_headers=["*"],  # Барлық заголовоктарға рұқсат
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Маршрутты қосу
-# Ескерту: Егер routes.py-да префикс болса, мұнда керек емес
-app.include_router(router, prefix="/api") 
+# ОСЫ ЖОЛДЫ ТЕКСЕР: префикс міндетті түрде /api болуы керек
+app.include_router(router, prefix="/api")
+
 
 @app.get("/")
 def home():
