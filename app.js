@@ -15,7 +15,6 @@ function toggleForms() {
 
 // Жүйеге кіру функциясы
 async function login() {
-    // ID-лер HTML-дегімен бірдей болуы шарт!
     const emailField = document.getElementById("loginEmail");
     const passField = document.getElementById("loginPass");
 
@@ -28,7 +27,11 @@ async function login() {
         const res = await fetch(`${API_URL}/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: emailField.value, password: passField.value })
+            // Кіру кезінде де парольді қауіпсіз етіп жібереміз
+            body: JSON.stringify({ 
+                email: emailField.value, 
+                password: String(passField.value).trim().substring(0, 50) 
+            })
         });
         const data = await res.json();
         if (data.access_token) {
@@ -45,15 +48,27 @@ async function login() {
 
 // Тіркелу функциясы
 async function register() {
-    const name = document.getElementById("regName").value;
-    const email = document.getElementById("regEmail").value;
-    const password = document.getElementById("regPass").value;
+    try {
+        const name = document.getElementById("regName").value;
+        const email = document.getElementById("regEmail").value;
+        let password = document.getElementById("regPass").value;
 
-    const res = await fetch(`${API_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
-    });
-    const data = await res.json();
-    alert(data.message || data.detail);
+        // МІНЕ БІЗДІҢ ҚҰТҚАРУШЫ: Парольді тазалап, 50 әріпке кесіп жібереміз
+        password = String(password).trim().substring(0, 50);
+
+        const res = await fetch(`${API_URL}/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name, email: email, password: password })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert("🏆 ЖЕҢІС!!! Сіз сәтті тіркелдіңіз! Енді рахаттанып ұйықтауға болады!");
+        } else {
+            alert(data.message || data.detail);
+        }
+    } catch (err) {
+        console.error("Тіркелу қатесі:", err);
+    }
 }
