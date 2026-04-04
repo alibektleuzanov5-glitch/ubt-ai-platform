@@ -1,40 +1,32 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 import os
-from dotenv import load_dotenv
-
-# Біздің басқа файлдарымыздан керек нәрселерді шақыру
-from database import engine, Base, get_db
 from routes import router
+from database import engine, Base
+import uvicorn
 
-# .env файлын жүктеу (API кілттер үшін)
-load_dotenv()
-
-# Базаны құру (егер әлі құрылмаса)
+# Базаны құру
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="UBT Math AI Platform API")
+app = FastAPI()
 
-# --- МЫНАУ ЕҢ МАҢЫЗДЫ БӨЛІМ (CORS ЕМІ) ---
-# Бұл код Vercel-ге Render-мен еркін сөйлесуге рұқсат береді
+# --- КҮШЕЙТІЛГЕН CORS БАПТАУЫ ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Барлық сайттарға рұқсат
     allow_credentials=True,
-    allow_methods=["*"],  # Барлық батырмаларға (POST, GET т.б.) рұқсат
-    allow_headers=["*"],
+    allow_methods=["*"],  # POST, GET, OPTIONS - бәріне рұқсат
+    allow_headers=["*"],  # Барлық заголовоктарға рұқсат
 )
 
-# Маршруттарды қосу (prefix="/api" арқылы app.js-ке ыңғайлы болады)
-app.include_router(router)
+# Маршрутты қосу
+# Ескерту: Егер routes.py-да префикс болса, мұнда керек емес
+app.include_router(router, prefix="/api") 
 
 @app.get("/")
 def home():
-    return {"status": "Backend is running!", "docs": "/docs"}
+    return {"message": "Backend is running!"}
 
-# Render-де іске қосылу үшін қажетті баптау
 if __name__ == "__main__":
-    import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
