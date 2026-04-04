@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 # Маршруттарды қосу (prefix="/api" арқылы app.js-ке ыңғайлы болады)
-app.include_router(router, prefix="/api")
+app.include_router(router)
 
 @app.get("/")
 def home():
