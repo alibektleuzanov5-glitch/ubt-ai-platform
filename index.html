@@ -3,110 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ҰБТ Платформасы | AI Tutor</title>
-    
-    <link rel="stylesheet" href="style.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <title>ҰБТ Математика - AI Платформа</title>
+    <style>
+        /* Қарапайым дизайн: формаларды әдемі көрсету үшін */
+        body { font-family: sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #27ae60; }
+        .toggle-link { color: #3498db; cursor: pointer; text-align: center; margin-top: 15px; display: block; }
+        #chatBox { height: 300px; border: 1px solid #ddd; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #fff; }
+        .hidden { display: none; }
+        .course-card { border: 1px solid #eee; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
 </head>
 <body>
 
-    <nav id="navbar" class="hidden">
-        <h2>ҰБТ Платформасы</h2>
-        <div class="user-info">
-            <button class="btn-outline" onclick="showTools()">Интерактивті құралдар</button>
-            <span id="nav-user-name" style="font-weight:600; margin-left: 10px;"></span>
-            
-            <div class="xp-badge">
-                ⭐ <span id="user-xp-display">0</span> XP
-            </div>
+<div class="container">
+    <h2 id="pageTitle" style="text-align: center;">Қош келдіңіз!</h2>
+    <p id="userInfo" style="text-align: center; font-weight: bold; color: #2c3e50;"></p>
 
-            <button onclick="showAnalytics()" class="btn-success">📊 Менің прогресім</button>
-            <button class="btn-danger" onclick="logout()">Шығу</button>
-        </div>
-    </nav>
-
-    <div id="analytics-section" style="display:none; max-width: 800px; margin: 20px auto; padding: 20px; border-radius: 12px; background: white; box-shadow: var(--shadow);">
-        <h2 style="color: var(--text-dark); margin-bottom: 15px;">📈 ЖИ Аналитика: Сенің даму картаң</h2>
-        <div id="analytics-content" style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow); border-left: 8px solid var(--success-color); min-height: 100px;"></div>
+    <div id="loginForm">
+        <h3>Жүйеге кіру</h3>
+        <input type="email" id="loginEmail" placeholder="Электронды пошта (Email)">
+        <input type="password" id="loginPass" placeholder="Құпия сөз">
+        <button onclick="login()">Кіру</button>
+        <span class="toggle-link" onclick="toggleForms()">Аккаунтыңыз жоқ па? Тіркелу</span>
     </div>
 
-    <div class="auth-wrapper" id="auth-section">
-        <div class="auth-container">
-            <div id="login-form">
-                <h2>Жүйеге кіру</h2>
-                <div class="form-group"><label>Email:</label><input type="email" id="login-email"></div>
-                <div class="form-group"><label>Құпия сөз:</label><input type="password" id="login-password"></div>
-                <button style="width: 100%;" onclick="login()">Кіру</button>
-                <div class="toggle-text" onclick="toggleForms()">Аккаунтыңыз жоқ па? Тіркелу</div>
-            </div>
-            <div id="register-form" class="hidden">
-                <h2>Тіркелу</h2>
-                <div class="form-group"><label>Атыңыз:</label><input type="text" id="reg-name"></div>
-                <div class="form-group"><label>Email:</label><input type="email" id="reg-email"></div>
-                <div class="form-group"><label>Құпия сөз:</label><input type="password" id="reg-password"></div>
-                <button style="width: 100%;" onclick="register()">Тіркелу</button>
-                <div class="toggle-text" onclick="toggleForms()">Кіру</div>
-            </div>
-        </div>
+    <div id="regForm" class="hidden">
+        <h3>Жаңа аккаунт ашу</h3>
+        <input type="text" id="regName" placeholder="Толық атыңыз">
+        <input type="email" id="regEmail" placeholder="Электронды пошта (Email)">
+        <input type="password" id="regPass" placeholder="Құпия сөз">
+        <button onclick="register()">Тіркелуді аяқтау</button>
+        <span class="toggle-link" onclick="toggleForms()">Аккаунтыңыз бар ма? Кіру</span>
     </div>
 
-    <div class="dashboard-container hidden" id="dashboard-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <div>
-                <h2 id="page-title" style="margin: 0;">Қолжетімді курстар</h2>
-                <p id="page-desc" style="color: var(--text-light); margin: 5px 0 0 0;">ҰБТ-ға дайындықты бастау үшін пәнді таңдаңыз.</p>
-            </div>
-            <div id="back-button-container" class="hidden">
-                <button style="background-color: var(--text-light);" onclick="location.reload()">← Басты бетке</button>
-            </div>
-        </div>
-        <div class="courses-grid" id="courses-list"></div>
-    </div>
+    <div id="mainContent" class="hidden">
+        <hr>
+        <h3>Математика курстары</h3>
+        <div id="coursesContainer">Курстар жүктелуде...</div>
 
-    <div class="dashboard-container hidden" id="tools-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <div>
-                <h2 style="margin: 0;">Математикалық зертхана</h2>
-                <p style="color: var(--text-light); margin: 5px 0 0 0;">Есептерді шығару және тексеру үшін қолданыңыз.</p>
-            </div>
-            <div>
-                <button style="background-color: var(--text-light);" onclick="hideTools()">← Курстарға қайту</button>
-            </div>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 30px;">
-            <div class="course-card" style="padding: 20px;">
-                <h3 style="margin-top: 0; color: var(--primary-color);">Desmos: Графиктік Калькулятор</h3>
-                <iframe src="https://www.desmos.com/calculator?lang=ru" width="100%" height="450px" style="border: 1px solid #ccc; border-radius: 8px;" frameborder=0></iframe>
-            </div>
-            <div class="course-card" style="padding: 20px;">
-                <h3 style="margin-top: 0; color: var(--primary-color);">GeoGebra: Геометрия және 3D</h3>
-                <iframe src="https://www.geogebra.org/classic?lang=ru" width="100%" height="450px" style="border: 1px solid #ccc; border-radius: 8px;" frameborder=0></iframe>
-            </div>
-        </div>
+        <hr>
+        <h3>ЖИ Мұғаліммен сөйлесу</h3>
+        <div id="chatBox"></div>
+        <input type="text" id="chatInput" placeholder="Сұрағыңызды жазыңыз...">
+        <button onclick="sendChat()" style="background-color: #3498db;">Жіберу</button>
+        <br><br>
+        <button onclick="logout()" style="background-color: #e74c3c;">Шығу</button>
     </div>
+</div>
 
-    <div id="chat-widget" class="chat-widget hidden">
-        <button class="chat-button" onclick="toggleChat()">🤖</button>
-        <div class="chat-window" id="chat-window">
-            <div class="chat-header">
-                <span>AI Тьютор</span>
-                <button class="chat-close" onclick="toggleChat()">✖</button>
-            </div>
-            <div class="chat-messages" id="chat-messages">
-                <div class="msg ai">Сәлем! Мен AI Тьютормын. Математикадан қандай сұрағың бар?</div>
-            </div>
-            <div class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Сұрағыңызды жазыңыз..." onkeypress="handleChatEnter(event)">
-                <button onclick="sendChatMessage()">Жіберу</button>
-            </div>
-        </div>
-    </div>
+<script src="app.js"></script>
 
-    <script src="app.js"></script>
+<script>
+    // Бұл жерде тек интерфейсті басқару функциясы қалады
+    function toggleForms() {
+        const loginForm = document.getElementById("loginForm");
+        const regForm = document.getElementById("regForm");
+        const pageTitle = document.getElementById("pageTitle");
+
+        if (loginForm.classList.contains("hidden")) {
+            loginForm.classList.remove("hidden");
+            regForm.classList.add("hidden");
+            pageTitle.innerText = "Жүйеге кіру";
+        } else {
+            loginForm.classList.add("hidden");
+            regForm.classList.remove("hidden");
+            pageTitle.innerText = "Тіркелу";
+        }
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.reload();
+    }
+
+    // Егер пайдаланушы бұрын кірген болса, форманы жасырып, контентті көрсету
+    window.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            document.getElementById("loginForm").classList.add("hidden");
+            document.getElementById("regForm").classList.add("hidden");
+            document.getElementById("mainContent").classList.remove("hidden");
+        }
+    });
+</script>
 
 </body>
 </html>
