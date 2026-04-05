@@ -79,7 +79,7 @@ def chat_with_vision(req: models.ChatMessage):
                     ],
                 }
             ],
-            model="llama-3.2-11b-vision-preview",
+            model="llama-3.2-90b-vision-preview",
         )
         return {"reply": chat_completion.choices[0].message.content}
     except Exception as e:
