@@ -1,6 +1,5 @@
 const API_URL = "https://ubt-math-api.onrender.com/api";
 
-// ЖАҢА: XP мен Жалынды жаңартатын функция
 function updateStats(newXP, newStreak) {
     const name = localStorage.getItem("userName");
     let xpText = localStorage.getItem("userXP") || 0;
@@ -52,7 +51,7 @@ async function login() {
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("userName", data.name);
             localStorage.setItem("userXP", data.xp);
-            localStorage.setItem("userStreak", data.streak); // Жалынды сақтау
+            localStorage.setItem("userStreak", data.streak);
             window.location.reload();
         } else {
             alert(data.detail || "Қате: Пароль немесе Email дұрыс емес.");
@@ -120,6 +119,50 @@ async function showLeaderboard() {
     }
 }
 
+// ЖАҢА ФУНКЦИЯ: Курстар мен Модульдерді жүктеу
+async function loadCourses() {
+    const container = document.getElementById("coursesContainer");
+    try {
+        const res = await fetch(`${API_URL}/courses-full`);
+        const courses = await res.json();
+        
+        if (courses.length === 0) return;
+        container.innerHTML = "";
+
+        courses.forEach(course => {
+            let modulesHTML = course.modules.map(mod => `
+                <div style="margin: 8px 0; border-left: 3px solid #3498db; padding-left: 10px;">
+                    <div onclick="this.nextElementSibling.classList.toggle('hidden')" style="cursor:pointer; font-weight:bold; color:#1e293b; padding:5px; background: #f1f5f9; border-radius: 5px;">
+                        📂 ${mod.title}
+                    </div>
+                    <div class="hidden" style="padding-left: 15px; font-size: 14px; color: #475569; margin-top: 5px;">
+                        ${mod.lessons.map(l => `<div style="margin:5px 0; padding: 5px; background: white; border: 1px solid #e2e8f0; border-radius: 4px;">🔹 ${l.title}</div>`).join("")}
+                    </div>
+                </div>
+            `).join("");
+
+            const card = `
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div onclick="this.nextElementSibling.classList.toggle('hidden')" style="cursor: pointer; display: flex; align-items: center; padding: 15px; background: #f8fafc;">
+                        <img src="${course.image_url}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover; margin-right: 15px;">
+                        <div style="flex-grow: 1;">
+                            <h4 style="margin: 0; color: #1e293b;">${course.title}</h4>
+                            <small style="color: #64748b;">${course.modules.length} модуль</small>
+                        </div>
+                        <span style="color: #94a3b8; font-size: 18px;">▼</span>
+                    </div>
+                    <div class="hidden" style="padding: 15px; border-top: 1px solid #e2e8f0; background: white;">
+                        ${modulesHTML}
+                    </div>
+                </div>
+            `;
+            container.innerHTML += card;
+        });
+    } catch (err) {
+        console.error("Курстарды жүктеу қатесі:", err);
+    }
+}
+
 const toBase64 = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -175,7 +218,7 @@ async function sendChat() {
         });
         
         const data = await res.json();
-        updateStats(data.new_xp, data.new_streak); // ЖАҢАРТЫЛДЫ
+        updateStats(data.new_xp, data.new_streak); 
         document.getElementById(loadingId).remove();
 
         if (data.reply) {
@@ -221,7 +264,7 @@ async function analyzeMistakes() {
         });
         
         const data = await res.json();
-        updateStats(data.new_xp, data.new_streak); // ЖАҢАРТЫЛДЫ
+        updateStats(data.new_xp, data.new_streak); 
         document.getElementById(loadingId).remove();
 
         if (data.reply) {
@@ -247,6 +290,7 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById("regForm").classList.add("hidden");
         document.getElementById("mainContent").classList.remove("hidden");
         document.getElementById("pageTitle").innerText = "Жеке кабинет";
-        updateStats(); // Экранды ашқанда көрсету
+        updateStats(); 
+        loadCourses(); // КУРСТАРДЫ АВТОМАТТЫ ТҮРДЕ ЖҮКТЕЙМІЗ
     }
 });

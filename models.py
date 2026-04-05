@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from database import Base
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -12,51 +11,31 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String, default="student")
     xp = Column(Integer, default=0)
-    streak = Column(Integer, default=0) # ЖАҢА: Жалын саны
-    last_active_date = Column(String, default="") # ЖАҢА: Соңғы белсенді күні
+    streak = Column(Integer, default=0)
+    last_active_date = Column(String, default="")
 
 class Course(Base):
     __tablename__ = "courses"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
+    title = Column(String)
     description = Column(Text)
-    image_url = Column(String, default="https://via.placeholder.com/300x150?text=Course")
+    image_url = Column(String)
+
+class Module(Base):
+    __tablename__ = "modules"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    course_id = Column(Integer, ForeignKey("courses.id"))
 
 class Lesson(Base):
     __tablename__ = "lessons"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    video_url = Column(String) 
-    content = Column(Text)
-    course_id = Column(Integer)
+    title = Column(String)
+    video_url = Column(String, nullable=True)
+    content = Column(Text, nullable=True)
+    module_id = Column(Integer, ForeignKey("modules.id"))
 
-class Question(Base):
-    __tablename__ = "questions"
-    id = Column(Integer, primary_key=True, index=True)
-    text = Column(String)
-    option_a = Column(String)
-    option_b = Column(String)
-    option_c = Column(String)
-    correct_option = Column(String)
-    lesson_id = Column(Integer)
-
-class TestResult(Base):
-    __tablename__ = "test_results"
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String)
-    lesson_title = Column(String)
-    score = Column(Integer)
-    total_questions = Column(Integer)
-    date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
-
-class TutorRequest(BaseModel):
-    question_text: str
-    selected_answer: str
-
-class GenerateRequest(BaseModel):
-    course_id: int
-    topic: str
-
+# --- Pydantic моделдері (Фронтендтен келетін сұраныстар үшін) ---
 class UserRegister(BaseModel):
     name: str
     email: str
@@ -66,36 +45,8 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
-class CourseCreate(BaseModel):
-    title: str
-    description: str
-    image_url: Optional[str] = "https://via.placeholder.com/300x150?text=Course"
-
-class ResultSave(BaseModel):
-    user_email: str
-    lesson_title: str
-    score: int
-    total_questions: int
-
 class ChatMessage(BaseModel):
     message: str
-
-class CourseResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    image_url: str
-    class Config:
-        from_attributes = True
-
-class LessonResponse(BaseModel):
-    id: int
-    title: str
-    video_url: str
-    content: str
-    course_id: int
-    class Config:
-        from_attributes = True
 
 class WeaknessRequest(BaseModel):
     questions: List[str]

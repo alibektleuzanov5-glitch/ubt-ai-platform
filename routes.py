@@ -33,7 +33,6 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# ЖАҢА: Токенді тексеріп, XP мен Жалынды (Streak) есептейтін функция
 def add_xp_to_user(token: str, points: int, db: Session):
     if not token: 
         return None
@@ -49,17 +48,16 @@ def add_xp_to_user(token: str, points: int, db: Session):
             if user:
                 user.xp += points
                 
-                # Жалынды (Streak) есептеу
                 today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
                 
                 if user.last_active_date == today:
-                    pass # Бүгін кіріп қойған, жалын өспейді
+                    pass 
                 elif user.last_active_date == yesterday:
-                    user.streak += 1 # Кеше де кірген, жалынды жалғастырамыз
+                    user.streak += 1
                     user.last_active_date = today
                 else:
-                    user.streak = 1 # Көптен бері кірмеген немесе бірінші рет
+                    user.streak = 1
                     user.last_active_date = today
                 
                 db.commit()
@@ -68,6 +66,8 @@ def add_xp_to_user(token: str, points: int, db: Session):
     except:
         pass
     return None
+
+# --- МАРШРУТТАР ---
 
 @router.post("/register")
 def register(user: models.UserRegister, db: Session = Depends(get_db)):
@@ -92,8 +92,31 @@ def login(user: models.UserLogin, db: Session = Depends(get_db)):
         "name": db_user.name, 
         "role": db_user.role,
         "xp": db_user.xp,
-        "streak": db_user.streak # Кірген кезде жалынды да қайтарамыз
+        "streak": db_user.streak
     }
+
+@router.get("/courses-full")
+def get_all_courses_with_modules(db: Session = Depends(get_db)):
+    try:
+        courses = db.query(models.Course).all()
+        result = []
+        for course in courses:
+            modules = db.query(models.Module).filter(models.Module.course_id == course.id).all()
+            module_list = []
+            for mod in modules:
+                lessons = db.query(models.Lesson).filter(models.Lesson.module_id == mod.id).all()
+                module_list.append({
+                    "title": mod.title,
+                    "lessons": [{"title": l.title} for l in lessons]
+                })
+            result.append({
+                "title": course.title,
+                "image_url": course.image_url,
+                "modules": module_list
+            })
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Курстарды алу мүмкін болмады")
 
 @router.post("/chat-vision")
 def chat_with_vision(req: models.ChatMessage, authorization: str = Header(None), db: Session = Depends(get_db)):
