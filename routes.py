@@ -99,5 +99,20 @@ def chat_with_ai(req: models.ChatMessage):
         return {"reply": chat_completion.choices[0].message.content}
     except:
         raise HTTPException(status_code=500, detail="ЖИ қатесі")
+    
+# routes.py файлының ішіне қосамыз:
+
+@router.get("/leaderboard")
+def get_leaderboard(db: Session = Depends(get_db)):
+    try:
+        # XP бойынша кему ретімен (desc) сұрыптап, ең алдыңғы 10 оқушыны аламыз
+        top_users = db.query(models.User).order_by(models.User.xp.desc()).limit(10).all()
+        
+        # Оларды фронтендке түсінікті форматта (Тек аты мен ұпайы) жібереміз
+        result = [{"name": u.name, "xp": u.xp} for u in top_users]
+        return result
+    except Exception as e:
+        print(f"Leaderboard Error: {e}")
+        raise HTTPException(status_code=500, detail="Рейтингті алу мүмкін болмады")
 
 # Басқа маршруттар өзгеріссіз қалады (courses, save-result т.б.)

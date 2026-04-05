@@ -66,6 +66,52 @@ function logout() {
     window.location.reload();
 }
 
+// app.js ішіне қосамыз:
+
+async function showLeaderboard() {
+    const box = document.getElementById("chatBox"); // Рейтингті чаттың ішіне шығара саламыз
+    
+    // Жүктеліп жатқанын көрсету
+    const loadingId = "load-leaderboard";
+    box.innerHTML += `<div id="${loadingId}" style="text-align: center; color: gray; margin: 10px 0;"><i>🏆 Рейтинг жүктелуде...</i></div>`;
+    box.scrollTop = box.scrollHeight;
+
+    try {
+        const res = await fetch(`${API_URL}/leaderboard`);
+        const data = await res.json();
+        
+        document.getElementById(loadingId).remove();
+
+        let html = `
+        <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 15px; padding: 15px; margin: 15px 0; text-align: left;">
+            <h3 style="margin-top: 0; color: #1e40af; text-align: center;">🏆 Үздік 10 Оқушы</h3>
+            <ul style="list-style: none; padding: 0; margin: 0;">`;
+
+        data.forEach((user, index) => {
+            // Алғашқы 3 орынға медаль береміз
+            let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `<span style="display:inline-block; width: 20px; text-align:center;">${index + 1}</span>`;
+            
+            // Егер бұл өзіміз болсақ, қалың әріппен көрсетеміз
+            const myName = localStorage.getItem("userName");
+            const isMe = user.name === myName ? "background: #dbeafe; font-weight: bold;" : "";
+
+            html += `
+                <li style="padding: 8px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; border-radius: 5px; ${isMe}">
+                    <span>${medal} ${user.name}</span>
+                    <span style="color: #047857; font-weight: bold;">${user.xp} XP</span>
+                </li>`;
+        });
+
+        html += `</ul></div>`;
+        box.innerHTML += html;
+        box.scrollTop = box.scrollHeight;
+
+    } catch (err) {
+        if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+        box.innerHTML += `<div style="text-align: center; color: red;">❌ Рейтингке қосылу мүмкін болмады.</div>`;
+    }
+}
+
 // 5. Суретті Base64-ке айналдыру
 const toBase64 = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
