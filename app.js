@@ -1,18 +1,5 @@
 const API_URL = "https://ubt-math-api.onrender.com/api";
 
-// Тіркелу мен Кіру формаларын ауыстырып қосатын функция (toggle)
-function toggleForms() {
-    const loginForm = document.getElementById("loginForm");
-    const regForm = document.getElementById("regForm");
-    if (loginForm.style.display === "none") {
-        loginForm.style.display = "block";
-        regForm.style.display = "none";
-    } else {
-        loginForm.style.display = "none";
-        regForm.style.display = "block";
-    }
-}
-
 // Жүйеге кіру функциясы
 async function login() {
     const emailField = document.getElementById("loginEmail");
@@ -27,7 +14,6 @@ async function login() {
         const res = await fetch(`${API_URL}/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            // Кіру кезінде де парольді қауіпсіз етіп жібереміз
             body: JSON.stringify({ 
                 email: emailField.value, 
                 password: String(passField.value).trim().substring(0, 50) 
@@ -43,6 +29,7 @@ async function login() {
         }
     } catch (err) {
         console.error("Кіру қатесі:", err);
+        alert("Сервермен байланыс жоқ!");
     }
 }
 
@@ -53,7 +40,6 @@ async function register() {
         const email = document.getElementById("regEmail").value;
         let password = document.getElementById("regPass").value;
 
-        // МІНЕ БІЗДІҢ ҚҰТҚАРУШЫ: Парольді тазалап, 50 әріпке кесіп жібереміз
         password = String(password).trim().substring(0, 50);
 
         const res = await fetch(`${API_URL}/register`, {
@@ -64,11 +50,17 @@ async function register() {
         const data = await res.json();
         
         if (res.ok) {
-            alert("🏆 ЖЕҢІС!!! Сіз сәтті тіркелдіңіз! Енді рахаттанып ұйықтауға болады!");
+            alert("🏆 ЖЕҢІС!!! Сіз сәтті тіркелдіңіз! Енді кіру формасы арқылы кіре аласыз.");
         } else {
             alert(data.message || data.detail);
         }
     } catch (err) {
         console.error("Тіркелу қатесі:", err);
+        alert("Сервермен байланыс жоқ!");
     }
+}
+
+// ЖИ-мен сөйлесу (Қате шықпас үшін уақытша қосылды)
+function sendChat() {
+    alert("Чат жүйесі енді қосылады!");
 }
