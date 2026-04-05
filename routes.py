@@ -28,12 +28,16 @@ ALGORITHM = "HS256"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 ai_client = Groq(api_key=GROQ_API_KEY)
 
+
+
 # --- Көмекші функциялар ---
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    # Қандай ұзын пароль келсе де, 70 әріптен ары қарай кесіп тастайды
+    return pwd_context.hash(password[:70])
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    # Тексерген кезде де 70 әріпке дейін ғана тексереді
+    return pwd_context.verify(plain_password[:70], hashed_password)
 
 def create_access_token(data: dict):
     to_encode = data.copy()
