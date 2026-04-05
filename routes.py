@@ -33,34 +33,41 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# ==========================================
-# ЖАҢА: Токенді тексеріп, XP қосатын функция
-# ==========================================
+# ЖАҢА: Токенді тексеріп, XP мен Жалынды (Streak) есептейтін функция
 def add_xp_to_user(token: str, points: int, db: Session):
     if not token: 
         return None
     try:
-        # "Bearer <token>" форматынан тек токенді кесіп алу
         if token.startswith("Bearer "):
             token = token.split(" ")[1]
         
-        # Токеннің ішінен email-ді оқу
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         
         if email:
-            # Базадан оқушыны тауып, ұпайын көтеру
             user = db.query(models.User).filter(models.User.email == email).first()
             if user:
                 user.xp += points
+                
+                # Жалынды (Streak) есептеу
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+                
+                if user.last_active_date == today:
+                    pass # Бүгін кіріп қойған, жалын өспейді
+                elif user.last_active_date == yesterday:
+                    user.streak += 1 # Кеше де кірген, жалынды жалғастырамыз
+                    user.last_active_date = today
+                else:
+                    user.streak = 1 # Көптен бері кірмеген немесе бірінші рет
+                    user.last_active_date = today
+                
                 db.commit()
                 db.refresh(user)
-                return user.xp
+                return {"xp": user.xp, "streak": user.streak}
     except:
         pass
     return None
-
-# --- API МАРШРУТТАРЫ ---
 
 @router.post("/register")
 def register(user: models.UserRegister, db: Session = Depends(get_db)):
@@ -84,7 +91,8 @@ def login(user: models.UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer", 
         "name": db_user.name, 
         "role": db_user.role,
-        "xp": db_user.xp 
+        "xp": db_user.xp,
+        "streak": db_user.streak # Кірген кезде жалынды да қайтарамыз
     }
 
 @router.post("/chat-vision")
@@ -96,22 +104,18 @@ def chat_with_vision(req: models.ChatMessage, authorization: str = Header(None),
                     "role": "user",
                     "content": [
                         {"type": "text", "text": "Сен ҰБТ математика мұғалімісің. Бұл суреттегі есепті тауып, оны LaTeX форматында қадам-қадаммен түсіндіріп шығарып бер."},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": req.message,
-                            },
-                        },
+                        {"type": "image_url", "image_url": {"url": req.message}},
                     ],
                 }
             ],
             model="meta-llama/llama-4-scout-17b-16e-instruct",
         )
         reply = chat_completion.choices[0].message.content
-        new_xp = add_xp_to_user(authorization, 15, db) # Сурет үшін +15 XP
-        return {"reply": reply, "new_xp": new_xp}
+        stats = add_xp_to_user(authorization, 15, db) 
+        new_xp = stats["xp"] if stats else None
+        new_streak = stats["streak"] if stats else None
+        return {"reply": reply, "new_xp": new_xp, "new_streak": new_streak}
     except Exception as e:
-        print(f"Vision Error: {e}")
         raise HTTPException(status_code=500, detail="ЖИ суретті көре алмады")
 
 @router.post("/chat")
@@ -125,8 +129,10 @@ def chat_with_ai(req: models.ChatMessage, authorization: str = Header(None), db:
             model="llama-3.1-8b-instant",
         )
         reply = chat_completion.choices[0].message.content
-        new_xp = add_xp_to_user(authorization, 10, db) # Жай сұрақ үшін +10 XP
-        return {"reply": reply, "new_xp": new_xp}
+        stats = add_xp_to_user(authorization, 10, db) 
+        new_xp = stats["xp"] if stats else None
+        new_streak = stats["streak"] if stats else None
+        return {"reply": reply, "new_xp": new_xp, "new_streak": new_streak}
     except:
         raise HTTPException(status_code=500, detail="ЖИ қатесі")
     
@@ -137,15 +143,14 @@ def get_leaderboard(db: Session = Depends(get_db)):
         result = [{"name": u.name, "xp": u.xp} for u in top_users]
         return result
     except Exception as e:
-        print(f"Leaderboard Error: {e}")
         raise HTTPException(status_code=500, detail="Рейтингті алу мүмкін болмады")
 
 @router.post("/analyze-weakness")
 def analyze_weakness(req: models.WeaknessRequest, authorization: str = Header(None), db: Session = Depends(get_db)):
     if not req.questions:
-        return {"reply": "Әзірге маған ешқандай есеп жіберген жоқсыз. Бірнеше есеп жіберіңіз, сосын мен сіздің әлсіз тұстарыңызды талдап беремін!"}
+        return {"reply": "Әзірге маған ешқандай есеп жіберген жоқсыз."}
     
-    prompt = f"Оқушы мынадай сұрақтар мен есептерді сұрады: {', '.join(req.questions)}. Оқушының математикадан қай тақырыптарда қиналатынын (әлсіз тұстарын) анықта. Сол тақырыптардың ережесін қысқаша түсіндіріп, өз бетінше шығаруға 2 жаңа есеп бер. Міндетті түрде қазақ тілінде және математикалық формулаларды $ белгісімен (LaTeX) жаз."
+    prompt = f"Оқушы мынадай сұрақтар сұрады: {', '.join(req.questions)}. Әлсіз тұстарын тауып, түсіндіріп 2 жаңа есеп бер. Формулаларды $ белгісімен (LaTeX) жаз."
 
     try:
         chat_completion = ai_client.chat.completions.create(
@@ -156,8 +161,9 @@ def analyze_weakness(req: models.WeaknessRequest, authorization: str = Header(No
             model="llama-3.1-8b-instant",
         )
         reply = chat_completion.choices[0].message.content
-        new_xp = add_xp_to_user(authorization, 20, db) # Қатемен жұмыс үшін +20 XP
-        return {"reply": reply, "new_xp": new_xp}
+        stats = add_xp_to_user(authorization, 20, db) 
+        new_xp = stats["xp"] if stats else None
+        new_streak = stats["streak"] if stats else None
+        return {"reply": reply, "new_xp": new_xp, "new_streak": new_streak}
     except Exception as e:
-        print(f"Analyze Error: {e}")
         raise HTTPException(status_code=500, detail="ЖИ талдау жасай алмады")

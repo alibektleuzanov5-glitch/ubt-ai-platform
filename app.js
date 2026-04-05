@@ -1,18 +1,27 @@
 const API_URL = "https://ubt-math-api.onrender.com/api";
 
-// ЖАҢА: Экрандағы XP санын лезде жаңартатын функция
-function updateXP(newXP) {
+// ЖАҢА: XP мен Жалынды жаңартатын функция
+function updateStats(newXP, newStreak) {
+    const name = localStorage.getItem("userName");
+    let xpText = localStorage.getItem("userXP") || 0;
+    let streakText = localStorage.getItem("userStreak") || 0;
+
     if (newXP !== undefined && newXP !== null) {
         localStorage.setItem("userXP", newXP);
-        const name = localStorage.getItem("userName");
-        document.getElementById("userInfo").innerHTML = `Сәлем, <b>${name}</b>! <span class="xp-badge">🏆 ${newXP} XP</span>`;
+        xpText = newXP;
     }
+    if (newStreak !== undefined && newStreak !== null) {
+        localStorage.setItem("userStreak", newStreak);
+        streakText = newStreak;
+    }
+    
+    document.getElementById("userInfo").innerHTML = `Сәлем, <b>${name}</b>! 
+        <span class="xp-badge">🏆 ${xpText} XP</span> 
+        <span class="streak-badge">🔥 ${streakText} күн</span>`;
 }
 
-// 1-ҚАДАМ: Оқушының сұрақтарын сақтайтын қоржын
 let userQuestions = []; 
 
-// 1. Формаларды ауыстыру
 function toggleForms() {
     const loginForm = document.getElementById("loginForm");
     const regForm = document.getElementById("regForm");
@@ -29,7 +38,6 @@ function toggleForms() {
     }
 }
 
-// 2. Жүйеге кіру
 async function login() {
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPass").value;
@@ -44,6 +52,7 @@ async function login() {
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("userName", data.name);
             localStorage.setItem("userXP", data.xp);
+            localStorage.setItem("userStreak", data.streak); // Жалынды сақтау
             window.location.reload();
         } else {
             alert(data.detail || "Қате: Пароль немесе Email дұрыс емес.");
@@ -51,7 +60,6 @@ async function login() {
     } catch (err) { alert("Сервер ұйықтап жатыр. Сәл күтіп, қайта көріңіз."); }
 }
 
-// 3. Тіркелу
 async function register() {
     const name = document.getElementById("regName").value;
     const email = document.getElementById("regEmail").value;
@@ -72,16 +80,13 @@ async function register() {
     } catch (err) { alert("Сервермен байланыс жоқ."); }
 }
 
-// 4. Жүйеден шығу
 function logout() {
     localStorage.clear();
     window.location.reload();
 }
 
-// РЕЙТИНГ КӨРСЕТУ ФУНКЦИЯСЫ
 async function showLeaderboard() {
     const box = document.getElementById("chatBox"); 
-    
     const loadingId = "load-leaderboard";
     box.innerHTML += `<div id="${loadingId}" style="text-align: center; color: gray; margin: 10px 0;"><i>🏆 Рейтинг жүктелуде...</i></div>`;
     box.scrollTop = box.scrollHeight;
@@ -89,7 +94,6 @@ async function showLeaderboard() {
     try {
         const res = await fetch(`${API_URL}/leaderboard`);
         const data = await res.json();
-        
         document.getElementById(loadingId).remove();
 
         let html = `
@@ -99,28 +103,23 @@ async function showLeaderboard() {
 
         data.forEach((user, index) => {
             let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `<span style="display:inline-block; width: 20px; text-align:center;">${index + 1}</span>`;
-            
             const myName = localStorage.getItem("userName");
             const isMe = user.name === myName ? "background: #dbeafe; font-weight: bold;" : "";
-
             html += `
                 <li style="padding: 8px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; border-radius: 5px; ${isMe}">
                     <span>${medal} ${user.name}</span>
                     <span style="color: #047857; font-weight: bold;">${user.xp} XP</span>
                 </li>`;
         });
-
         html += `</ul></div>`;
         box.innerHTML += html;
         box.scrollTop = box.scrollHeight;
-
     } catch (err) {
         if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
         box.innerHTML += `<div style="text-align: center; color: red;">❌ Рейтингке қосылу мүмкін болмады.</div>`;
     }
 }
 
-// 5. Суретті Base64-ке айналдыру
 const toBase64 = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -128,7 +127,6 @@ const toBase64 = file => new Promise((resolve, reject) => {
     reader.onerror = error => reject(error);
 });
 
-// 6. ЖАҢАРТЫЛҒАН СЕНІМДІ ЧАТ ФУНКЦИЯСЫ
 async function sendChat() {
     const input = document.getElementById("chatInput");
     const imageInput = document.getElementById("imageInput");
@@ -165,7 +163,6 @@ async function sendChat() {
     box.innerHTML += `<div id="${loadingId}" style="text-align: left; color: gray;"><i>⏳ ЖИ талдап жатыр...</i></div>`;
     box.scrollTop = box.scrollHeight;
 
-    // ЖАҢА: Токенді қосып жіберу
     const token = localStorage.getItem("token");
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -178,11 +175,7 @@ async function sendChat() {
         });
         
         const data = await res.json();
-        console.log("Серверден келген жауап:", data); 
-
-        // ЖАҢА: Экрандағы XP санын жаңарту
-        updateXP(data.new_xp);
-
+        updateStats(data.new_xp, data.new_streak); // ЖАҢАРТЫЛДЫ
         document.getElementById(loadingId).remove();
 
         if (data.reply) {
@@ -203,7 +196,6 @@ async function sendChat() {
     }
 }
 
-// 3-ҚАДАМ: ҚАТЕМЕН ЖҰМЫС ФУНКЦИЯСЫ
 async function analyzeMistakes() {
     const box = document.getElementById("chatBox");
     
@@ -217,7 +209,6 @@ async function analyzeMistakes() {
     box.innerHTML += `<div id="${loadingId}" style="text-align: left; color: gray;"><i>🔍 Сіздің сұрақтарыңызды талдап, әлсіз тұстарыңызды іздеп жатырмын...</i></div>`;
     box.scrollTop = box.scrollHeight;
 
-    // ЖАҢА: Токенді қосып жіберу
     const token = localStorage.getItem("token");
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -230,10 +221,7 @@ async function analyzeMistakes() {
         });
         
         const data = await res.json();
-        
-        // ЖАҢА: Экрандағы XP санын жаңарту
-        updateXP(data.new_xp);
-
+        updateStats(data.new_xp, data.new_streak); // ЖАҢАРТЫЛДЫ
         document.getElementById(loadingId).remove();
 
         if (data.reply) {
@@ -252,7 +240,6 @@ async function analyzeMistakes() {
     }
 }
 
-// 7. Бастапқы тексеру
 window.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -260,8 +247,6 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById("regForm").classList.add("hidden");
         document.getElementById("mainContent").classList.remove("hidden");
         document.getElementById("pageTitle").innerText = "Жеке кабинет";
-        const name = localStorage.getItem("userName") || "Оқушы";
-        const xp = localStorage.getItem("userXP") || "0";
-        document.getElementById("userInfo").innerHTML = `Сәлем, <b>${name}</b>! <span class="xp-badge">🏆 ${xp} XP</span>`;
+        updateStats(); // Экранды ашқанда көрсету
     }
 });

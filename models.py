@@ -4,9 +4,6 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
-# ==========================================
-# 1. SQLAlchemy Кестелері (Деректер базасы)
-# ==========================================
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -15,6 +12,8 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String, default="student")
     xp = Column(Integer, default=0)
+    streak = Column(Integer, default=0) # ЖАҢА: Жалын саны
+    last_active_date = Column(String, default="") # ЖАҢА: Соңғы белсенді күні
 
 class Course(Base):
     __tablename__ = "courses"
@@ -50,9 +49,6 @@ class TestResult(Base):
     total_questions = Column(Integer)
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-# ==========================================
-# 2. Pydantic Схемалары (API деректерін тексеру)
-# ==========================================
 class TutorRequest(BaseModel):
     question_text: str
     selected_answer: str
@@ -101,6 +97,5 @@ class LessonResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# ЖАҢА: Қатемен жұмысқа арналған схема
 class WeaknessRequest(BaseModel):
     questions: List[str]
