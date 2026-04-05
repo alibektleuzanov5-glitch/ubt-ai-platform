@@ -1,6 +1,15 @@
 const API_URL = "https://ubt-math-api.onrender.com/api";
 
-// 1-ҚАДАМ: Оқушының сұрақтарын сақтайтын қоржын (ЖАҢА ЖОЛ)
+// ЖАҢА: Экрандағы XP санын лезде жаңартатын функция
+function updateXP(newXP) {
+    if (newXP !== undefined && newXP !== null) {
+        localStorage.setItem("userXP", newXP);
+        const name = localStorage.getItem("userName");
+        document.getElementById("userInfo").innerHTML = `Сәлем, <b>${name}</b>! <span class="xp-badge">🏆 ${newXP} XP</span>`;
+    }
+}
+
+// 1-ҚАДАМ: Оқушының сұрақтарын сақтайтын қоржын
 let userQuestions = []; 
 
 // 1. Формаларды ауыстыру
@@ -130,16 +139,14 @@ async function sendChat() {
 
     if (!msg && !file) return;
 
-    // 3-ҚАДАМ: Сұрақты қоржынға салу (ЖАҢА ЛОГИКА)
     if (msg) {
         userQuestions.push(msg);
-        if (userQuestions.length > 5) userQuestions.shift(); // Тек соңғы 5 сұрақты сақтаймыз
+        if (userQuestions.length > 5) userQuestions.shift(); 
     }
 
     let payloadMessage = msg;
     let endpoint = `${API_URL}/chat`;
 
-    // Суретті өңдеу
     if (file) {
         const base64 = await toBase64(file);
         payloadMessage = base64; 
@@ -150,7 +157,6 @@ async function sendChat() {
         box.innerHTML += `<div style="text-align: right;"><span style="background: #2563eb; color: white; padding: 8px 12px; border-radius: 15px; display: inline-block;">${msg}</span></div>`;
     }
 
-    // Поляларды тазарту
     input.value = "";
     imageInput.value = ""; 
     box.scrollTop = box.scrollHeight;
@@ -159,15 +165,23 @@ async function sendChat() {
     box.innerHTML += `<div id="${loadingId}" style="text-align: left; color: gray;"><i>⏳ ЖИ талдап жатыр...</i></div>`;
     box.scrollTop = box.scrollHeight;
 
+    // ЖАҢА: Токенді қосып жіберу
+    const token = localStorage.getItem("token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     try {
         const res = await fetch(endpoint, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify({ message: payloadMessage })
         });
         
         const data = await res.json();
         console.log("Серверден келген жауап:", data); 
+
+        // ЖАҢА: Экрандағы XP санын жаңарту
+        updateXP(data.new_xp);
 
         document.getElementById(loadingId).remove();
 
@@ -189,7 +203,7 @@ async function sendChat() {
     }
 }
 
-// 3-ҚАДАМ: ҚАТЕМЕН ЖҰМЫС ФУНКЦИЯСЫ (ЖАҢА)
+// 3-ҚАДАМ: ҚАТЕМЕН ЖҰМЫС ФУНКЦИЯСЫ
 async function analyzeMistakes() {
     const box = document.getElementById("chatBox");
     
@@ -203,18 +217,26 @@ async function analyzeMistakes() {
     box.innerHTML += `<div id="${loadingId}" style="text-align: left; color: gray;"><i>🔍 Сіздің сұрақтарыңызды талдап, әлсіз тұстарыңызды іздеп жатырмын...</i></div>`;
     box.scrollTop = box.scrollHeight;
 
+    // ЖАҢА: Токенді қосып жіберу
+    const token = localStorage.getItem("token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     try {
         const res = await fetch(`${API_URL}/analyze-weakness`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify({ questions: userQuestions })
         });
         
         const data = await res.json();
+        
+        // ЖАҢА: Экрандағы XP санын жаңарту
+        updateXP(data.new_xp);
+
         document.getElementById(loadingId).remove();
 
         if (data.reply) {
-            // Қатемен жұмыс нәтижесін көгілдір әдемі фонмен шығарамыз
             box.innerHTML += `<div style="text-align: left; margin: 10px 0;"><span style="background: #e0f2fe; border: 2px solid #38bdf8; padding: 12px; border-radius: 15px; display: inline-block;"><b>🎯 Қатемен жұмыс:</b><br><br> ${data.reply}</span></div>`;
         } else {
             box.innerHTML += `<div style="text-align: left;"><span style="background: #fee2e2; color: #b91c1c; padding: 8px 12px; border-radius: 15px; display: inline-block;">❌ Қате: ${data.detail}</span></div>`;

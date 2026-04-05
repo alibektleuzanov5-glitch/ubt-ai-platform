@@ -1,7 +1,7 @@
 import os
 import json
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 import jwt
@@ -33,6 +33,33 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+# ==========================================
+# ЖАҢА: Токенді тексеріп, XP қосатын функция
+# ==========================================
+def add_xp_to_user(token: str, points: int, db: Session):
+    if not token: 
+        return None
+    try:
+        # "Bearer <token>" форматынан тек токенді кесіп алу
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+        
+        # Токеннің ішінен email-ді оқу
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        
+        if email:
+            # Базадан оқушыны тауып, ұпайын көтеру
+            user = db.query(models.User).filter(models.User.email == email).first()
+            if user:
+                user.xp += points
+                db.commit()
+                db.refresh(user)
+                return user.xp
+    except:
+        pass
+    return None
+
 # --- API МАРШРУТТАРЫ ---
 
 @router.post("/register")
@@ -61,7 +88,7 @@ def login(user: models.UserLogin, db: Session = Depends(get_db)):
     }
 
 @router.post("/chat-vision")
-def chat_with_vision(req: models.ChatMessage):
+def chat_with_vision(req: models.ChatMessage, authorization: str = Header(None), db: Session = Depends(get_db)):
     try:
         chat_completion = ai_client.chat.completions.create(
             messages=[
@@ -80,13 +107,15 @@ def chat_with_vision(req: models.ChatMessage):
             ],
             model="meta-llama/llama-4-scout-17b-16e-instruct",
         )
-        return {"reply": chat_completion.choices[0].message.content}
+        reply = chat_completion.choices[0].message.content
+        new_xp = add_xp_to_user(authorization, 15, db) # Сурет үшін +15 XP
+        return {"reply": reply, "new_xp": new_xp}
     except Exception as e:
         print(f"Vision Error: {e}")
         raise HTTPException(status_code=500, detail="ЖИ суретті көре алмады")
 
 @router.post("/chat")
-def chat_with_ai(req: models.ChatMessage):
+def chat_with_ai(req: models.ChatMessage, authorization: str = Header(None), db: Session = Depends(get_db)):
     try:
         chat_completion = ai_client.chat.completions.create(
             messages=[
@@ -95,7 +124,9 @@ def chat_with_ai(req: models.ChatMessage):
             ],
             model="llama-3.1-8b-instant",
         )
-        return {"reply": chat_completion.choices[0].message.content}
+        reply = chat_completion.choices[0].message.content
+        new_xp = add_xp_to_user(authorization, 10, db) # Жай сұрақ үшін +10 XP
+        return {"reply": reply, "new_xp": new_xp}
     except:
         raise HTTPException(status_code=500, detail="ЖИ қатесі")
     
@@ -110,7 +141,7 @@ def get_leaderboard(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Рейтингті алу мүмкін болмады")
 
 @router.post("/analyze-weakness")
-def analyze_weakness(req: models.WeaknessRequest):
+def analyze_weakness(req: models.WeaknessRequest, authorization: str = Header(None), db: Session = Depends(get_db)):
     if not req.questions:
         return {"reply": "Әзірге маған ешқандай есеп жіберген жоқсыз. Бірнеше есеп жіберіңіз, сосын мен сіздің әлсіз тұстарыңызды талдап беремін!"}
     
@@ -124,7 +155,9 @@ def analyze_weakness(req: models.WeaknessRequest):
             ],
             model="llama-3.1-8b-instant",
         )
-        return {"reply": chat_completion.choices[0].message.content}
+        reply = chat_completion.choices[0].message.content
+        new_xp = add_xp_to_user(authorization, 20, db) # Қатемен жұмыс үшін +20 XP
+        return {"reply": reply, "new_xp": new_xp}
     except Exception as e:
         print(f"Analyze Error: {e}")
         raise HTTPException(status_code=500, detail="ЖИ талдау жасай алмады")
