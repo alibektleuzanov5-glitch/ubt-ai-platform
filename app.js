@@ -1,5 +1,8 @@
 const API_URL = "https://ubt-math-api.onrender.com/api";
 
+// 1-ҚАДАМ: Оқушының сұрақтарын сақтайтын қоржын (ЖАҢА ЖОЛ)
+let userQuestions = []; 
+
 // 1. Формаларды ауыстыру
 function toggleForms() {
     const loginForm = document.getElementById("loginForm");
@@ -66,12 +69,10 @@ function logout() {
     window.location.reload();
 }
 
-// app.js ішіне қосамыз:
-
+// РЕЙТИНГ КӨРСЕТУ ФУНКЦИЯСЫ
 async function showLeaderboard() {
-    const box = document.getElementById("chatBox"); // Рейтингті чаттың ішіне шығара саламыз
+    const box = document.getElementById("chatBox"); 
     
-    // Жүктеліп жатқанын көрсету
     const loadingId = "load-leaderboard";
     box.innerHTML += `<div id="${loadingId}" style="text-align: center; color: gray; margin: 10px 0;"><i>🏆 Рейтинг жүктелуде...</i></div>`;
     box.scrollTop = box.scrollHeight;
@@ -88,10 +89,8 @@ async function showLeaderboard() {
             <ul style="list-style: none; padding: 0; margin: 0;">`;
 
         data.forEach((user, index) => {
-            // Алғашқы 3 орынға медаль береміз
             let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `<span style="display:inline-block; width: 20px; text-align:center;">${index + 1}</span>`;
             
-            // Егер бұл өзіміз болсақ, қалың әріппен көрсетеміз
             const myName = localStorage.getItem("userName");
             const isMe = user.name === myName ? "background: #dbeafe; font-weight: bold;" : "";
 
@@ -131,6 +130,12 @@ async function sendChat() {
 
     if (!msg && !file) return;
 
+    // 3-ҚАДАМ: Сұрақты қоржынға салу (ЖАҢА ЛОГИКА)
+    if (msg) {
+        userQuestions.push(msg);
+        if (userQuestions.length > 5) userQuestions.shift(); // Тек соңғы 5 сұрақты сақтаймыз
+    }
+
     let payloadMessage = msg;
     let endpoint = `${API_URL}/chat`;
 
@@ -162,15 +167,13 @@ async function sendChat() {
         });
         
         const data = await res.json();
-        console.log("Серверден келген жауап:", data); // Консольден тексеру үшін
+        console.log("Серверден келген жауап:", data); 
 
         document.getElementById(loadingId).remove();
 
-        // undefined қатесін болдырмау үшін тексеру
         if (data.reply) {
             box.innerHTML += `<div style="text-align: left;"><span style="background: #e2e8f0; padding: 8px 12px; border-radius: 15px; display: inline-block;">🤖 ${data.reply}</span></div>`;
         } else if (data.detail) {
-            // Егер сервер қате берсе (мысалы, модель өшіп қалса)
             box.innerHTML += `<div style="text-align: left;"><span style="background: #fee2e2; color: #b91c1c; padding: 8px 12px; border-radius: 15px; display: inline-block;">❌ Қате: ${data.detail}</span></div>`;
         } else {
             box.innerHTML += `<div style="text-align: left;"><span style="background: #fee2e2; color: #b91c1c; padding: 8px 12px; border-radius: 15px; display: inline-block;">❌ Күтпеген қате шықты.</span></div>`;
@@ -182,6 +185,47 @@ async function sendChat() {
     } catch (err) {
         if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
         box.innerHTML += `<div style="text-align: left;"><span style="color: red;">❌ Байланыс үзілді немесе сервер жауап бермеді.</span></div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+// 3-ҚАДАМ: ҚАТЕМЕН ЖҰМЫС ФУНКЦИЯСЫ (ЖАҢА)
+async function analyzeMistakes() {
+    const box = document.getElementById("chatBox");
+    
+    if (userQuestions.length === 0) {
+        box.innerHTML += `<div style="text-align: left;"><span style="background: #e2e8f0; padding: 8px 12px; border-radius: 15px; display: inline-block;">🤖 Қатемен жұмыс жасау үшін алдымен чатқа 2-3 сұрақ немесе есеп жазып жіберіңіз.</span></div>`;
+        box.scrollTop = box.scrollHeight;
+        return;
+    }
+
+    const loadingId = "load-analyze";
+    box.innerHTML += `<div id="${loadingId}" style="text-align: left; color: gray;"><i>🔍 Сіздің сұрақтарыңызды талдап, әлсіз тұстарыңызды іздеп жатырмын...</i></div>`;
+    box.scrollTop = box.scrollHeight;
+
+    try {
+        const res = await fetch(`${API_URL}/analyze-weakness`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ questions: userQuestions })
+        });
+        
+        const data = await res.json();
+        document.getElementById(loadingId).remove();
+
+        if (data.reply) {
+            // Қатемен жұмыс нәтижесін көгілдір әдемі фонмен шығарамыз
+            box.innerHTML += `<div style="text-align: left; margin: 10px 0;"><span style="background: #e0f2fe; border: 2px solid #38bdf8; padding: 12px; border-radius: 15px; display: inline-block;"><b>🎯 Қатемен жұмыс:</b><br><br> ${data.reply}</span></div>`;
+        } else {
+            box.innerHTML += `<div style="text-align: left;"><span style="background: #fee2e2; color: #b91c1c; padding: 8px 12px; border-radius: 15px; display: inline-block;">❌ Қате: ${data.detail}</span></div>`;
+        }
+
+        box.scrollTop = box.scrollHeight;
+        if (window.MathJax) { MathJax.typesetPromise(); }
+
+    } catch (err) {
+        if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+        box.innerHTML += `<div style="text-align: left;"><span style="color: red;">❌ Сервермен байланыс үзілді.</span></div>`;
         box.scrollTop = box.scrollHeight;
     }
 }

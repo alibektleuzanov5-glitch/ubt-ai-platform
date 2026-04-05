@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text
 from database import Base
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 # ==========================================
@@ -100,3 +100,7 @@ class LessonResponse(BaseModel):
     course_id: int
     class Config:
         from_attributes = True
+
+# ЖАҢА: Қатемен жұмысқа арналған схема
+class WeaknessRequest(BaseModel):
+    questions: List[str]
