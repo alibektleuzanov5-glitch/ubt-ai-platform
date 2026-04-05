@@ -60,7 +60,6 @@ def login(user: models.UserLogin, db: Session = Depends(get_db)):
         "xp": db_user.xp 
     }
 
-# ЖАҢА: Суретті талдайтын ЖИ мұғалім
 @router.post("/chat-vision")
 def chat_with_vision(req: models.ChatMessage):
     try:
@@ -73,7 +72,7 @@ def chat_with_vision(req: models.ChatMessage):
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": req.message, # Мұнда суреттің Base64 коды келеді
+                                "url": req.message,
                             },
                         },
                     ],
@@ -100,19 +99,32 @@ def chat_with_ai(req: models.ChatMessage):
     except:
         raise HTTPException(status_code=500, detail="ЖИ қатесі")
     
-# routes.py файлының ішіне қосамыз:
-
 @router.get("/leaderboard")
 def get_leaderboard(db: Session = Depends(get_db)):
     try:
-        # XP бойынша кему ретімен (desc) сұрыптап, ең алдыңғы 10 оқушыны аламыз
         top_users = db.query(models.User).order_by(models.User.xp.desc()).limit(10).all()
-        
-        # Оларды фронтендке түсінікті форматта (Тек аты мен ұпайы) жібереміз
         result = [{"name": u.name, "xp": u.xp} for u in top_users]
         return result
     except Exception as e:
         print(f"Leaderboard Error: {e}")
         raise HTTPException(status_code=500, detail="Рейтингті алу мүмкін болмады")
 
-# Басқа маршруттар өзгеріссіз қалады (courses, save-result т.б.)
+@router.post("/analyze-weakness")
+def analyze_weakness(req: models.WeaknessRequest):
+    if not req.questions:
+        return {"reply": "Әзірге маған ешқандай есеп жіберген жоқсыз. Бірнеше есеп жіберіңіз, сосын мен сіздің әлсіз тұстарыңызды талдап беремін!"}
+    
+    prompt = f"Оқушы мынадай сұрақтар мен есептерді сұрады: {', '.join(req.questions)}. Оқушының математикадан қай тақырыптарда қиналатынын (әлсіз тұстарын) анықта. Сол тақырыптардың ережесін қысқаша түсіндіріп, өз бетінше шығаруға 2 жаңа есеп бер. Міндетті түрде қазақ тілінде және математикалық формулаларды $ белгісімен (LaTeX) жаз."
+
+    try:
+        chat_completion = ai_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "Сен ҰБТ математика мұғалімісің. Оқушының қателерімен жұмыс істейсің."},
+                {"role": "user", "content": prompt}
+            ],
+            model="llama-3.1-8b-instant",
+        )
+        return {"reply": chat_completion.choices[0].message.content}
+    except Exception as e:
+        print(f"Analyze Error: {e}")
+        raise HTTPException(status_code=500, detail="ЖИ талдау жасай алмады")
