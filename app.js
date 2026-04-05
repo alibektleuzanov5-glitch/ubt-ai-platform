@@ -74,7 +74,7 @@ function logout() {
     window.location.reload();
 }
 
-// 5. ЖАҢА ФУНКЦИЯ: Чат арқылы ЖИ-мен сөйлесу
+// 5. Чат арқылы ЖИ-мен сөйлесу (Формулаларды әдемілеу қосылған)
 async function sendChat() {
     const input = document.getElementById("chatInput");
     const box = document.getElementById("chatBox");
@@ -106,6 +106,12 @@ async function sendChat() {
         // ЖИ жауабын сұр түспен шығару
         box.innerHTML += `<div style="text-align: left;"><span style="background: #e2e8f0; padding: 8px 12px; border-radius: 15px; display: inline-block;">🤖 ${data.reply}</span></div>`;
         box.scrollTop = box.scrollHeight;
+
+        // МІНЕ, ЖАҢА ҚОСЫЛҒАН КОД (Математиканы әдемілеп салу)
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+        
     } catch (err) {
         document.getElementById(loadingId).innerText = "Қате шықты. Сервер ұйықтап жатуы мүмкін.";
     }
