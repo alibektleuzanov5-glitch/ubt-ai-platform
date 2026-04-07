@@ -9,36 +9,33 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
-
     <div id="authContainer" class="auth-wrapper">
         <div class="auth-card">
+            <div class="logo auth-logo"><span class="logo-icon">🎓</span> <b>ENT</b>prep AI</div>
             <h2 id="pageTitle">Жүйеге кіру</h2>
             <div id="loginForm">
-                <input type="email" id="loginEmail" placeholder="Email">
-                <input type="password" id="loginPass" placeholder="Құпия сөз">
+                <input type="email" id="loginEmail" placeholder="Email" class="input-field">
+                <input type="password" id="loginPass" placeholder="Құпия сөз" class="input-field">
                 <button onclick="login()" class="btn-primary">Кіру</button>
             </div>
             <div id="regForm" class="hidden">
-                <input type="text" id="regName" placeholder="Толық атыңыз">
-                <input type="email" id="regEmail" placeholder="Email">
-                <input type="password" id="regPass" placeholder="Құпия сөз">
+                <input type="text" id="regName" placeholder="Толық атыңыз" class="input-field">
+                <input type="email" id="regEmail" placeholder="Email" class="input-field">
+                <input type="password" id="regPass" placeholder="Құпия сөз" class="input-field">
                 <button onclick="register()" class="btn-primary">Тіркелу</button>
             </div>
-            <p onclick="toggleForms()" class="toggle-link">Аккаунт ауыстыру</p>
+            <p onclick="toggleForms()" class="toggle-link">Аккаунт жоқ па? Тіркелу</p>
         </div>
     </div>
 
     <div id="mainContent" class="dashboard-wrapper hidden">
-        
         <aside class="sidebar">
-            <div class="logo">
-                <span class="logo-icon">🎓</span> <b>ENT</b>prep AI
-            </div>
+            <div class="logo"><span class="logo-icon">🎓</span> <b>ENT</b>prep AI</div>
             <nav class="nav-menu">
-                <a href="#" class="active">🏠 Басты бет</a>
-                <a href="#">📚 Менің курстарым</a>
+                <a href="#" onclick="switchTab('dashboardView')" class="active" id="navHome">🏠 Басты бет</a>
+                <a href="#" onclick="switchTab('dashboardView')">📚 Курстар</a>
                 <a href="#" onclick="showLeaderboard()">🏆 Рейтинг</a>
-                <a href="#">📝 Сынақ тестері</a>
+                <a href="#" onclick="switchTab('examView')">📝 Сынақ тестері</a>
                 <a href="#" onclick="logout()" class="logout-link">🚪 Шығу</a>
             </nav>
         </aside>
@@ -48,34 +45,54 @@
                 <div id="userInfo" class="user-info">Жүктелуде...</div>
             </header>
 
-            <div class="content-grid">
-                <section class="courses-section">
-                    <h3>🚀 Менің курстарым</h3>
-                    <div id="coursesContainer" class="courses-grid">
-                        <p class="loading-text">Курстар жүктелуде...</p>
-                    </div>
-                </section>
-
-                <section class="ai-section">
-                    <div class="ai-header">
-                        <h3>🤖 ЖИ Мұғалім</h3>
-                        <button onclick="analyzeMistakes()" class="btn-secondary">🔍 Қатемен жұмыс</button>
-                    </div>
-                    <div id="chatBox" class="chat-window">
-                        <div class="bot-msg">Сәлем! Бүгін қай тақырыпты талдаймыз? Сұрақ жаз немесе есептің суретін жібер.</div>
-                    </div>
-                    <div class="chat-input-area">
-                        <label for="imageInput" class="img-btn">📷
-                            <input type="file" id="imageInput" accept="image/*" hidden>
-                        </label>
-                        <input type="text" id="chatInput" placeholder="Сұрақ жазыңыз...">
-                        <button onclick="sendChat()" class="btn-send">Жіберу</button>
-                    </div>
-                </section>
+            <div id="dashboardView">
+                <div class="content-grid">
+                    <section class="courses-section">
+                        <h3>🚀 Менің курстарым</h3>
+                        <div id="coursesContainer" class="courses-grid"><p>Жүктелуде...</p></div>
+                    </section>
+                    <section class="ai-section">
+                        <div class="ai-header"><h3>🤖 ЖИ Мұғалім</h3></div>
+                        <div id="chatBox" class="chat-window"><div class="bot-msg">Сәлем! Сұрақ қой.</div></div>
+                        <div class="chat-input-area">
+                            <label class="img-btn">📷<input type="file" id="imageInput" accept="image/*" hidden></label>
+                            <input type="text" id="chatInput" placeholder="Сұрақ жазыңыз...">
+                            <button onclick="sendChat()" class="btn-send">Жіберу</button>
+                        </div>
+                    </section>
+                </div>
             </div>
+
+            <div id="lessonView" class="hidden">
+                <button onclick="switchTab('dashboardView')" class="btn-back">⬅ Тізімге қайту</button>
+                <div class="lesson-container">
+                    <h2 id="lessonTitleDisplay">Тақырып</h2>
+                    <div id="lessonContentDisplay" class="content-box">Мәтін осында болады</div>
+                    
+                    <div id="quizSection" class="quiz-box hidden">
+                        <h3 style="color:#1e40af;">🧠 Тақырыптық Тест (ЖИ)</h3>
+                        <p id="quizQuestion" class="quiz-q">Сұрақ жүктелуде...</p>
+                        <div id="quizOptions" class="quiz-opts"></div>
+                        <button id="nextQuizBtn" onclick="nextQuizQuestion()" class="btn-primary hidden" style="margin-top:15px;">Келесі сұрақ</button>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="startAiQuiz()" class="btn-secondary" style="flex:1;">📝 Тест тапсыру</button>
+                        <button onclick="completeLesson()" class="btn-complete" style="flex:1;">✅ Аяқтау (+50 XP)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="examView" class="hidden">
+                <div class="lesson-container">
+                    <h2>📝 ҰБТ Сынақ Тесті (Математикалық сауаттылық)</h2>
+                    <p>Барлығы 15 сұрақ беріледі. Уақыт: 40 минут.</p>
+                    <button onclick="alert('Тест базасы жасалуда! Келесі аптада қосылады.')" class="btn-primary" style="max-width: 200px;">Тестті бастау 🚀</button>
+                </div>
+            </div>
+
         </main>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
