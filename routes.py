@@ -116,7 +116,6 @@ def generate_quiz(req: QuizRequest, authorization: str = Header(None)):
         return {"quiz": json.loads(reply)}
     except Exception as e: return {"quiz": [{"q": "Қате кетті", "options": ["ОК"], "ans": "ОК"}]}
 
-# ЖАҢА: ЖИ Флешкарта генераторы
 @router.post("/generate-flashcards")
 def generate_flashcards(req: LessonRequest, authorization: str = Header(None)):
     prompt = f"'{req.topic}' тақырыбы бойынша есте сақтауға арналған 4 флешкарта құрастыр (термин және анықтама/формула). ЖАУАПТЫ ТЕК ҚАТАҢ JSON ФОРМАТЫНДА ҚАЙТАР: [{{\"front\":\"Термин\", \"back\":\"Анықтамасы\"}}]"

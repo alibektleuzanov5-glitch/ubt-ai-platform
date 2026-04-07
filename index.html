@@ -3,17 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENT AI Platform | 2026</title>
+    <title>AXIOM AI | ҰБТ Платформасы</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-    <div id="toastContainer" class="toast-container"></div> <div id="authContainer" class="auth-wrapper">
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div id="authContainer" class="auth-wrapper">
         <div class="auth-card">
-            <div class="logo auth-logo"><span class="logo-icon">🎓</span> <b>ENT</b>prep AI</div>
+            <div class="logo auth-logo" style="justify-content: center;">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 30px; height: 30px;">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                <b>AXIOM</b> <span style="font-weight: 300;">AI</span>
+            </div>
             <h2 id="pageTitle">Жүйеге кіру</h2>
             <div id="loginForm">
                 <input type="email" id="loginEmail" placeholder="Email" class="input-field">
@@ -31,12 +42,27 @@
     </div>
 
     <div id="mainContent" class="dashboard-wrapper hidden">
+        
         <aside class="sidebar">
-            <div class="logo"><span class="logo-icon">🎓</span> <b>ENT</b>prep AI</div>
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                <b>AXIOM</b> <span style="font-weight: 300;">AI</span>
+            </div>
+            
+            <div class="pomodoro-widget">
+                <div class="pomo-title">🍅 Фокус Таймер</div>
+                <div id="pomoTime">25:00</div>
+                <button id="pomoBtn" onclick="togglePomodoro()">Бастау</button>
+            </div>
+
             <nav class="nav-menu">
                 <a href="#" onclick="switchTab('dashboardView')" class="active" id="navHome">🏠 Басты бет</a>
                 <a href="#" onclick="switchTab('dashboardView')">📚 Курстар</a>
-                <a href="#" onclick="showProfile()">👤 Менің профилім</a>
+                <a href="#" onclick="showProfile()">👤 Профиль</a>
                 <a href="#" onclick="showLeaderboard()">🏆 Рейтинг</a>
                 <a href="#" onclick="switchTab('examView')">📝 Сынақ тестері</a>
                 <div style="margin-top: 20px; border-top: 1px solid #334155; padding-top: 10px;">
@@ -54,9 +80,19 @@
             <div id="dashboardView">
                 <div class="content-grid">
                     <section class="courses-section">
+                        <div class="quests-card">
+                            <h3 style="margin-top: 0; color: var(--primary);">🎯 Бүгінгі тапсырмалар</h3>
+                            <ul class="quests-list">
+                                <li id="quest1">⏳ Жүйеге кіру (+10 XP)</li>
+                                <li id="quest2">⏳ 1 сабақ оқу (+50 XP)</li>
+                                <li id="quest3">⏳ 1 ЖИ тест тапсыру (+30 XP)</li>
+                            </ul>
+                        </div>
+
                         <h3>🚀 Менің курстарым</h3>
                         <div id="coursesContainer" class="courses-grid"><p>Курстар жүктелуде...</p></div>
                     </section>
+                    
                     <section class="ai-section">
                         <div class="ai-header"><h3>🤖 ЖИ Мұғалім</h3></div>
                         <div id="chatBox" class="chat-window"><div class="bot-msg">Сәлем! Бүгін қай тақырыпты талдаймыз?</div></div>
@@ -75,11 +111,16 @@
                     <div class="video-placeholder" id="videoContainer" style="display: none;">
                         <iframe id="lessonVideo" width="100%" height="450" src="" frameborder="0" allowfullscreen></iframe>
                     </div>
-                    <h2 id="lessonTitleDisplay">Тақырып</h2>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 id="lessonTitleDisplay">Тақырып</h2>
+                        <button onclick="downloadPDF()" class="btn-secondary" style="font-size: 0.9rem;">📥 PDF жүктеу</button>
+                    </div>
+
                     <div id="lessonContentDisplay" class="content-box">Мәтін</div>
                     
                     <div id="flashcardsSection" class="hidden" style="margin-top: 2rem; margin-bottom: 2rem;">
-                        <h3 style="color:var(--primary);">🃏 ЖИ Флешкарталары (Жаттау үшін)</h3>
+                        <h3 style="color:var(--primary);">🃏 ЖИ Флешкарталары</h3>
                         <div id="flashcardsContainer" class="flashcards-grid"></div>
                     </div>
 
