@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AXIOM AI | ҰБТ Платформасы</title>
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,6 +13,22 @@
 </head>
 <body>
     <div id="toastContainer" class="toast-container"></div>
+
+    <div id="proModal" class="modal-overlay hidden">
+        <div class="modal-content pro-card">
+            <button onclick="closeProModal()" class="close-btn">✖</button>
+            <h2 style="color: #fbbf24; margin-top: 0;">💎 AXIOM PRO</h2>
+            <p>Платформаның барлық мүмкіндігін шектеусіз қолданыңыз!</p>
+            <ul style="text-align: left; margin: 20px 0; line-height: 1.8;">
+                <li>✅ ЖИ Мұғаліммен шектеусіз сөйлесу</li>
+                <li>✅ 10 000+ ҰБТ тест сұрақтарына кіру</li>
+                <li>✅ Толыққанды бейнесабақтар</li>
+                <li>✅ ЖИ Аудио-мұғалім дауысы</li>
+            </ul>
+            <h1 style="color: white; margin: 10px 0;">4 990 ₸ <span style="font-size: 1rem; color: #cbd5e1;">/ айына</span></h1>
+            <button class="btn-kaspi" onclick="alert('Kaspi төлем жүйесі жақында қосылады!')">Kaspi арқылы төлеу</button>
+        </div>
+    </div>
 
     <div id="authContainer" class="auth-wrapper">
         <div class="auth-card">
@@ -65,8 +80,9 @@
                 <a href="#" onclick="showProfile()">👤 Профиль</a>
                 <a href="#" onclick="showLeaderboard()">🏆 Рейтинг</a>
                 <a href="#" onclick="switchTab('examView')">📝 Сынақ тестері</a>
-                <div style="margin-top: 20px; border-top: 1px solid #334155; padding-top: 10px;">
-                    <a href="#" onclick="toggleTheme()">🌙 Қараңғы режим</a>
+                <div style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px;">
+                    <button onclick="openProModal()" class="btn-pro-sidebar">💎 AXIOM PRO</button>
+                    <a href="#" onclick="toggleTheme()" style="margin-top: 10px;">🌙 Қараңғы режим</a>
                 </div>
                 <a href="#" onclick="logout()" class="logout-link">🚪 Шығу</a>
             </nav>
@@ -88,7 +104,6 @@
                                 <li id="quest3">⏳ 1 ЖИ тест тапсыру (+30 XP)</li>
                             </ul>
                         </div>
-
                         <h3>🚀 Менің курстарым</h3>
                         <div id="coursesContainer" class="courses-grid"><p>Курстар жүктелуде...</p></div>
                     </section>
@@ -111,12 +126,10 @@
                     <div class="video-placeholder" id="videoContainer" style="display: none;">
                         <iframe id="lessonVideo" width="100%" height="450" src="" frameborder="0" allowfullscreen></iframe>
                     </div>
-                    
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h2 id="lessonTitleDisplay">Тақырып</h2>
                         <button onclick="downloadPDF()" class="btn-secondary" style="font-size: 0.9rem;">📥 PDF жүктеу</button>
                     </div>
-
                     <div id="lessonContentDisplay" class="content-box">Мәтін</div>
                     
                     <div id="flashcardsSection" class="hidden" style="margin-top: 2rem; margin-bottom: 2rem;">
@@ -142,7 +155,7 @@
             <div id="examView" class="hidden">
                 <div id="examIntro" class="lesson-container">
                     <h2>📝 ҰБТ Сынақ Тесті (Математикалық сауаттылық)</h2>
-                    <p>Барлығы 15 сұрақ беріледі. Уақыт: 40 минут. Дайынсыз ба?</p>
+                    <p>Барлығы 15 сұрақ беріледі. Уақыт: 40 минут.</p>
                     <button onclick="startMockExam()" class="btn-primary" style="max-width: 200px;">Тестті бастау 🚀</button>
                 </div>
                 <div id="examActive" class="hidden">
@@ -175,6 +188,11 @@
                         <div class="stat-card"><h3>🔥 Қатарынан кіру</h3><p id="profStreak" class="stat-value">0 күн</p></div>
                         <div class="stat-card"><h3>📝 Тапсырған тесттер</h3><p id="profTests" class="stat-value">0</p></div>
                     </div>
+                    
+                    <h3 style="margin-top: 2rem; color: var(--primary);">🏅 Менің жетістіктерім (Бадждар)</h3>
+                    <div class="achievements-grid" id="achievementsBox">
+                        </div>
+
                     <h3 style="margin-top: 2rem;">📈 Өсу динамикасы</h3>
                     <div style="height: 300px; width: 100%; margin-top: 1rem;"><canvas id="progressChart"></canvas></div>
                 </div>
