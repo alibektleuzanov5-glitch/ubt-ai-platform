@@ -3,229 +3,152 @@ let userQuestions = []; let currentTopic = ""; let currentQuizData = []; let cur
 let examQuestions = []; let currentExamIndex = 0; let userAnswers = {}; let examTimerInterval; let timeRemaining = 40 * 60;
 let progressChartInstance = null; 
 
-// ЖАҢА: АҚЫЛДЫ ТАҚТА (WHITEBOARD) ЛОГИКАСЫ
+// ЖАҢА: 1V1 BATTLE ЛОГИКАСЫ
+let battleQuestions = []; let bIdx = 0; let myBScore = 0; let oppBScore = 0; let bTimerInterval; let bTime = 15;
+const bMock = [
+    {q: "Егер x=3, y=4 болса, x²+y²=?", options: ["25", "7", "12", "14"], ans: "25"},
+    {q: "Қазақ хандығы қашан құрылды?", options: ["1465", "1500", "1200", "1400"], ans: "1465"},
+    {q: "Log₂(8) неге тең?", options: ["3", "2", "4", "8"], ans: "3"},
+    {q: "Ең жеңіл газ?", options: ["Сутегі", "Оттегі", "Азот", "Гелий"], ans: "Сутегі"},
+    {q: "5! (факториал) = ?", options: ["120", "24", "100", "60"], ans: "120"}
+];
+function startBattleMatchmaking() {
+    showToast("Қарсылас іздестірілуде...", "info");
+    setTimeout(() => {
+        document.getElementById("battleIntro").classList.add("hidden");
+        document.getElementById("battleActive").classList.remove("hidden");
+        document.getElementById("myBattleName").innerText = localStorage.getItem("userName") || "Сен";
+        const oppNames = ["Арман", "Аружан", "Димаш", "Мадина", "Ерлан"];
+        document.getElementById("oppBattleName").innerText = oppNames[Math.floor(Math.random() * oppNames.length)];
+        myBScore = 0; oppBScore = 0; bIdx = 0; updateBattleScores();
+        // Қарсылас симуляциясы (әр 4-6 секунд сайын дұрыс табады деп есептейміз)
+        setInterval(() => { if(bIdx < 5 && Math.random() > 0.3) { oppBScore++; updateBattleScores(); } }, 5000);
+        showBattleQuestion();
+    }, 2000);
+}
+function updateBattleScores() {
+    document.getElementById("myBattleScore").innerText = myBScore;
+    document.getElementById("oppBattleScore").innerText = oppBScore;
+    document.getElementById("myScoreFill").style.width = (myBScore/5)*100 + "%";
+    document.getElementById("oppScoreFill").style.width = (oppBScore/5)*100 + "%";
+}
+function showBattleQuestion() {
+    if(bIdx >= 5) { endBattle(); return; }
+    const q = bMock[bIdx]; document.getElementById("battleQuestion").innerText = q.q; document.getElementById("battleQNum").innerText = bIdx+1;
+    document.getElementById("battleOptions").innerHTML = q.options.map(opt => `<div class="quiz-opt" onclick="checkBattleAns('${opt}')">${opt}</div>`).join("");
+    bTime = 15; clearInterval(bTimerInterval);
+    bTimerInterval = setInterval(() => {
+        bTime--; document.getElementById("battleTimer").innerText = `⏱️ ${bTime}s`;
+        if(bTime <= 0) { clearInterval(bTimerInterval); bIdx++; showBattleQuestion(); }
+    }, 1000);
+}
+function checkBattleAns(ans) {
+    clearInterval(bTimerInterval);
+    if(ans === bMock[bIdx].ans) { myBScore++; showToast("Дұрыс! +1", "success"); } else { showToast("Қате!", "error"); }
+    updateBattleScores(); bIdx++; setTimeout(showBattleQuestion, 1000);
+}
+function endBattle() {
+    clearInterval(bTimerInterval); document.getElementById("battleActive").classList.add("hidden"); document.getElementById("battleResult").classList.remove("hidden");
+    const title = document.getElementById("battleWinnerText"); document.getElementById("battleResultScore").innerText = `${myBScore} - ${oppBScore}`;
+    if(myBScore > oppBScore) { title.innerText = "🏆 ЖЕҢІС!"; title.style.color = "#10b981"; fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: 100 }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); }); showToast("+100 XP тартып алдыңыз!", "success"); }
+    else if(myBScore < oppBScore) { title.innerText = "💀 ЖЕҢІЛДІҢІЗ"; title.style.color = "#ef4444"; }
+    else { title.innerText = "🤝 ТЕҢ ТҮСТІҢІЗ"; title.style.color = "#fbbf24"; }
+}
+
+// ЖАҢА: РЕФЕРАЛ СІЛТЕМЕСІ
+function copyReferralLink() {
+    const link = "https://axiom-ai.kz/invite?ref=" + (localStorage.getItem("userName") || "user").replace(/\s/g, '');
+    navigator.clipboard.writeText(link).then(() => { showToast("Сілтеме көшірілді! Досыңыз тіркелсе +1000 XP!", "success"); });
+}
+
+// ЖАҢА: АДМИН ПАНЕЛЬ
+async function showAdminPanel() {
+    switchTab('adminView');
+    const content = document.getElementById("adminContent");
+    content.innerHTML = "<p>⏳ Статистика жүктелуде...</p>";
+    try {
+        const res = await fetch(`${API_URL}/admin/stats`); const data = await res.json();
+        content.innerHTML = `
+            <div class="admin-card"><h3>👥 Жалпы Оқушылар</h3><p>${data.total_users}</p></div>
+            <div class="admin-card" style="border-left-color: #10b981;"><h3>🏆 Таратылған жалпы XP</h3><p>${data.total_xp}</p></div>
+            <div class="admin-card" style="border-left-color: #3b82f6;"><h3>🥇 Көшбасшы (Top 1)</h3><p style="font-size:1.5rem;">${data.top_user}</p></div>
+        `;
+    } catch(e) { content.innerHTML = "<p style='color:red;'>Қате кетті</p>"; }
+}
+
+// АҚЫЛДЫ ТАҚТА
 let isDrawing = false; let wbCanvas, wbCtx;
 function initWhiteboard() {
-    wbCanvas = document.getElementById("wbCanvas"); wbCtx = wbCanvas.getContext("2d");
-    wbCanvas.width = window.innerWidth; wbCanvas.height = window.innerHeight - 50; // top bar minus
+    wbCanvas = document.getElementById("wbCanvas"); wbCtx = wbCanvas.getContext("2d"); wbCanvas.width = window.innerWidth; wbCanvas.height = window.innerHeight - 50; 
     wbCtx.lineWidth = 3; wbCtx.lineCap = "round"; wbCtx.strokeStyle = "#1e40af";
-    
-    wbCanvas.addEventListener("mousedown", startDraw); wbCanvas.addEventListener("mousemove", draw); wbCanvas.addEventListener("mouseup", stopDraw);
-    wbCanvas.addEventListener("touchstart", (e) => { e.preventDefault(); startDraw(e.touches[0]); });
-    wbCanvas.addEventListener("touchmove", (e) => { e.preventDefault(); draw(e.touches[0]); });
-    wbCanvas.addEventListener("touchend", stopDraw);
+    wbCanvas.addEventListener("mousedown", startDraw); wbCanvas.addEventListener("mousemove", draw); wbCanvas.addEventListener("mouseup", stopDraw); wbCanvas.addEventListener("touchstart", (e) => { e.preventDefault(); startDraw(e.touches[0]); }); wbCanvas.addEventListener("touchmove", (e) => { e.preventDefault(); draw(e.touches[0]); }); wbCanvas.addEventListener("touchend", stopDraw);
 }
-function startDraw(e) { isDrawing = true; draw(e); }
-function stopDraw() { isDrawing = false; wbCtx.beginPath(); }
-function draw(e) {
-    if(!isDrawing) return;
-    const rect = wbCanvas.getBoundingClientRect();
-    wbCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    wbCtx.stroke(); wbCtx.beginPath();
-    wbCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-function toggleWhiteboard() { 
-    const wb = document.getElementById("whiteboardOverlay");
-    if(wb.classList.contains("hidden")) { wb.classList.remove("hidden"); if(!wbCtx) initWhiteboard(); } 
-    else { wb.classList.add("hidden"); }
-}
+function startDraw(e) { isDrawing = true; draw(e); } function stopDraw() { isDrawing = false; wbCtx.beginPath(); }
+function draw(e) { if(!isDrawing) return; const rect = wbCanvas.getBoundingClientRect(); wbCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top); wbCtx.stroke(); wbCtx.beginPath(); wbCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top); }
+function toggleWhiteboard() { const wb = document.getElementById("whiteboardOverlay"); if(wb.classList.contains("hidden")) { wb.classList.remove("hidden"); if(!wbCtx) initWhiteboard(); } else { wb.classList.add("hidden"); } }
 function clearWhiteboard() { if(wbCtx) wbCtx.clearRect(0, 0, wbCanvas.width, wbCanvas.height); }
 
-// ЖАҢА: ОҚУ ЖОСПАРЫ (ROADMAP)
+// ОҚУ ЖОСПАРЫ
 async function generateRoadmap() {
-    const target = document.getElementById("roadmapTarget").value;
-    if(!target) { showToast("Мақсатыңызды жазыңыз!", "error"); return; }
-    const resultBox = document.getElementById("roadmapResult");
-    resultBox.classList.remove("hidden"); resultBox.innerHTML = "<i>⏳ Сізге арналған жоспар құрылуда...</i>";
-    try {
-        const res = await fetch(`${API_URL}/generate-roadmap`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target: target }) });
-        const data = await res.json();
-        if(window.marked) resultBox.innerHTML = marked.parse(data.roadmap); else resultBox.innerText = data.roadmap;
-    } catch(e) { resultBox.innerHTML = "<b style='color:red;'>❌ Қате кетті</b>"; }
+    const target = document.getElementById("roadmapTarget").value; if(!target) { showToast("Мақсатыңызды жазыңыз!", "error"); return; }
+    const resultBox = document.getElementById("roadmapResult"); resultBox.classList.remove("hidden"); resultBox.innerHTML = "<i>⏳ Сізге арналған жоспар құрылуда...</i>";
+    try { const res = await fetch(`${API_URL}/generate-roadmap`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target: target }) }); const data = await res.json(); if(window.marked) resultBox.innerHTML = marked.parse(data.roadmap); else resultBox.innerText = data.roadmap; } catch(e) { resultBox.innerHTML = "<b style='color:red;'>❌ Қате кетті</b>"; }
 }
 
-// ЖАҢА: XP ДҮКЕНІ (FREEZE САТЫП АЛУ)
-function buyFreeze() {
-    let xp = parseInt(localStorage.getItem("userXP")||0);
-    if(xp >= 500) {
-        if(confirm("500 XP жұмсап Стрик Құтқарушысын сатып аласыз ба?")) {
-            let newXp = xp - 500;
-            localStorage.setItem("userXP", newXp);
-            localStorage.setItem("hasFreeze", "true"); // Save freeze state
-            updateStats(newXp, undefined);
-            showToast("Стрик Құтқарушы сатып алынды! 🧊", "success");
-        }
-    } else { showToast("XP жеткіліксіз!", "error"); }
-}
-
-function checkDailyReward() {
-    const today = new Date().toISOString().split('T')[0]; const lastReward = localStorage.getItem("lastRewardDate");
-    if (lastReward !== today) { document.getElementById("dailyRewardModal").classList.remove("hidden"); }
-}
-function claimDailyReward() {
-    const today = new Date().toISOString().split('T')[0]; localStorage.setItem("lastRewardDate", today);
-    const box = document.getElementById("rewardBox"); const randomXP = Math.floor(Math.random() * 91) + 10; 
-    box.innerHTML = `🎉 +${randomXP} XP!`; box.style.fontSize = "2.5rem"; box.style.color = "#10b981";
-    fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: randomXP }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); });
-    setTimeout(() => { document.getElementById("dailyRewardModal").classList.add("hidden"); showToast("Сыйлық алынды!", "success"); }, 2000);
-}
-function generateCertificate() {
-    const xp = parseInt(localStorage.getItem("userXP") || 0);
-    if(xp < 1000) { showToast("1000 XP жинау керек!", "error"); return; }
-    showToast("Сертификат дайындалуда...", "info"); const certName = localStorage.getItem("userName") || "Оқушы";
-    document.getElementById("certName").innerText = certName; document.getElementById("certDate").innerText = new Date().toLocaleDateString('kk-KZ');
-    const element = document.getElementById('certTemplate'); element.style.display = "block"; 
-    const opt = { margin: 0, filename: `AXIOM_Cert_${certName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } };
-    html2pdf().set(opt).from(element).save().then(() => { element.style.display = "none"; showToast("Сертификат құтты болсын! 🎉", "success"); });
-}
-
-function speakText(text) {
-    if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const msg = new SpeechSynthesisUtterance(); msg.text = text.replace(/<[^>]*>?/gm, '').replace(/[*_#`]/g, ''); msg.lang = 'kk-KZ'; window.speechSynthesis.speak(msg); } 
-    else { showToast("Дыбыс қолдамайды.", "error"); }
-}
-
+function buyFreeze() { let xp = parseInt(localStorage.getItem("userXP")||0); if(xp >= 500) { if(confirm("500 XP жұмсап Стрик Құтқарушысын сатып аласыз ба?")) { let newXp = xp - 500; localStorage.setItem("userXP", newXp); localStorage.setItem("hasFreeze", "true"); updateStats(newXp, undefined); showToast("Стрик Құтқарушы сатып алынды! 🧊", "success"); } } else { showToast("XP жеткіліксіз!", "error"); } }
+function checkDailyReward() { const today = new Date().toISOString().split('T')[0]; const lastReward = localStorage.getItem("lastRewardDate"); if (lastReward !== today) { document.getElementById("dailyRewardModal").classList.remove("hidden"); } }
+function claimDailyReward() { const today = new Date().toISOString().split('T')[0]; localStorage.setItem("lastRewardDate", today); const box = document.getElementById("rewardBox"); const randomXP = Math.floor(Math.random() * 91) + 10; box.innerHTML = `🎉 +${randomXP} XP!`; box.style.fontSize = "2.5rem"; box.style.color = "#10b981"; fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: randomXP }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); }); setTimeout(() => { document.getElementById("dailyRewardModal").classList.add("hidden"); showToast("Сыйлық алынды!", "success"); }, 2000); }
+function generateCertificate() { const xp = parseInt(localStorage.getItem("userXP") || 0); if(xp < 1000) { showToast("1000 XP жинау керек!", "error"); return; } showToast("Сертификат дайындалуда...", "info"); const certName = localStorage.getItem("userName") || "Оқушы"; document.getElementById("certName").innerText = certName; document.getElementById("certDate").innerText = new Date().toLocaleDateString('kk-KZ'); const element = document.getElementById('certTemplate'); element.style.display = "block"; const opt = { margin: 0, filename: `AXIOM_Cert_${certName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } }; html2pdf().set(opt).from(element).save().then(() => { element.style.display = "none"; showToast("Сертификат құтты болсын! 🎉", "success"); }); }
+function speakText(text) { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const msg = new SpeechSynthesisUtterance(); msg.text = text.replace(/<[^>]*>?/gm, '').replace(/[*_#`]/g, ''); msg.lang = 'kk-KZ'; window.speechSynthesis.speak(msg); } else { showToast("Дыбыс қолдамайды.", "error"); } }
 function openProModal() { document.getElementById("proModal").classList.remove("hidden"); }
 function closeProModal() { document.getElementById("proModal").classList.add("hidden"); }
 
-const achievementsList = [
-    { id: "a1", icon: "🌱", title: "Бастама", desc: "Жүйеге кіру", check: () => true },
-    { id: "a2", icon: "🔥", title: "Тұрақты", desc: "Стрик 3 күн", check: () => parseInt(localStorage.getItem("userStreak")||0) >= 3 },
-    { id: "a3", icon: "🧠", title: "Білгір", desc: "500 XP", check: () => parseInt(localStorage.getItem("userXP")||0) >= 500 },
-    { id: "a4", icon: "🎓", title: "Түлек", desc: "1000 XP", check: () => parseInt(localStorage.getItem("userXP")||0) >= 1000 }
-];
-function checkAchievements() {
-    let html = ""; let xp = parseInt(localStorage.getItem("userXP")||0);
-    if(xp >= 1000) document.getElementById("certBtn").classList.remove("hidden");
-    achievementsList.forEach(a => {
-        let isUnlocked = a.check();
-        if(isUnlocked && !localStorage.getItem("ach_"+a.id)) { localStorage.setItem("ach_"+a.id, "true"); setTimeout(() => showToast(`Жетістік: ${a.icon} ${a.title}!`, "success"), 2000); }
-        html += `<div class="badge-card ${isUnlocked ? 'unlocked' : ''}"><div class="badge-icon">${a.icon}</div><div class="badge-title">${a.title}</div><div class="badge-desc">${a.desc}</div></div>`;
-    });
-    const box = document.getElementById("achievementsBox"); if(box) box.innerHTML = html;
-}
+const achievementsList = [ { id: "a1", icon: "🌱", title: "Бастама", desc: "Жүйеге кіру", check: () => true }, { id: "a2", icon: "🔥", title: "Тұрақты", desc: "Стрик 3 күн", check: () => parseInt(localStorage.getItem("userStreak")||0) >= 3 }, { id: "a3", icon: "🧠", title: "Білгір", desc: "500 XP", check: () => parseInt(localStorage.getItem("userXP")||0) >= 500 }, { id: "a4", icon: "🎓", title: "Түлек", desc: "1000 XP", check: () => parseInt(localStorage.getItem("userXP")||0) >= 1000 } ];
+function checkAchievements() { let html = ""; let xp = parseInt(localStorage.getItem("userXP")||0); if(xp >= 1000) document.getElementById("certBtn").classList.remove("hidden"); achievementsList.forEach(a => { let isUnlocked = a.check(); if(isUnlocked && !localStorage.getItem("ach_"+a.id)) { localStorage.setItem("ach_"+a.id, "true"); setTimeout(() => showToast(`Жетістік: ${a.icon} ${a.title}!`, "success"), 2000); } html += `<div class="badge-card ${isUnlocked ? 'unlocked' : ''}"><div class="badge-icon">${a.icon}</div><div class="badge-title">${a.title}</div><div class="badge-desc">${a.desc}</div></div>`; }); const box = document.getElementById("achievementsBox"); if(box) box.innerHTML = html; }
 
 let pomoTime = 25 * 60; let pomoInterval = null; let isPomoRunning = false;
-function togglePomodoro() {
-    const btn = document.getElementById("pomoBtn");
-    if(isPomoRunning) { clearInterval(pomoInterval); isPomoRunning = false; btn.innerText = "Жалғастыру"; btn.style.background = "#8b5cf6"; } 
-    else {
-        isPomoRunning = true; btn.innerText = "Тоқтату"; btn.style.background = "#ef4444";
-        pomoInterval = setInterval(() => {
-            if(pomoTime <= 0) { clearInterval(pomoInterval); showToast("Уақыт бітті! 🍅", "success"); pomoTime = 25*60; isPomoRunning=false; btn.innerText="Бастау"; btn.style.background="var(--primary)"; return; }
-            pomoTime--; let m = Math.floor(pomoTime/60); let s = pomoTime%60; document.getElementById("pomoTime").innerText = `${m}:${s<10?'0':''}${s}`;
-        }, 1000);
-    }
-}
+function togglePomodoro() { const btn = document.getElementById("pomoBtn"); if(isPomoRunning) { clearInterval(pomoInterval); isPomoRunning = false; btn.innerText = "Жалғастыру"; btn.style.background = "#8b5cf6"; } else { isPomoRunning = true; btn.innerText = "Тоқтату"; btn.style.background = "#ef4444"; pomoInterval = setInterval(() => { if(pomoTime <= 0) { clearInterval(pomoInterval); showToast("Уақыт бітті! 🍅", "success"); pomoTime = 25*60; isPomoRunning=false; btn.innerText="Бастау"; btn.style.background="var(--primary)"; return; } pomoTime--; let m = Math.floor(pomoTime/60); let s = pomoTime%60; document.getElementById("pomoTime").innerText = `${m}:${s<10?'0':''}${s}`; }, 1000); } }
 
-function downloadPDF(elementId, fileName) {
-    showToast("PDF дайындалуда...", "info"); const element = document.getElementById(elementId);
-    const opt = { margin: 1, filename: `${fileName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
-    html2pdf().set(opt).from(element).save().then(() => showToast("PDF жүктелді!", "success"));
-}
-
-function checkQuests() {
-    if(localStorage.getItem("quest1")) { document.getElementById("quest1").classList.add("completed"); document.getElementById("quest1").innerText = "✅ Жүйеге кіру"; }
-    if(localStorage.getItem("quest2")) { document.getElementById("quest2").classList.add("completed"); document.getElementById("quest2").innerText = "✅ 1 сабақ оқу"; }
-    if(localStorage.getItem("quest3")) { document.getElementById("quest3").classList.add("completed"); document.getElementById("quest3").innerText = "✅ 1 ЖИ тест"; }
-}
+function downloadPDF(elementId, fileName) { showToast("PDF дайындалуда...", "info"); const element = document.getElementById(elementId); const opt = { margin: 1, filename: `${fileName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }; html2pdf().set(opt).from(element).save().then(() => showToast("PDF жүктелді!", "success")); }
+function checkQuests() { if(localStorage.getItem("quest1")) { document.getElementById("quest1").classList.add("completed"); document.getElementById("quest1").innerText = "✅ Жүйеге кіру"; } if(localStorage.getItem("quest2")) { document.getElementById("quest2").classList.add("completed"); document.getElementById("quest2").innerText = "✅ 1 сабақ оқу"; } if(localStorage.getItem("quest3")) { document.getElementById("quest3").classList.add("completed"); document.getElementById("quest3").innerText = "✅ 1 ЖИ тест"; } }
 
 function toggleTheme() { const isDark = document.body.getAttribute('data-theme') === 'dark'; if(isDark) { document.body.removeAttribute('data-theme'); localStorage.setItem('theme', 'light'); } else { document.body.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); } }
 function showToast(message, type = 'info') { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = `toast ${type}`; let icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '🔔'; toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`; container.appendChild(toast); setTimeout(() => { toast.style.animation = 'slideOut 0.3s forwards'; setTimeout(() => toast.remove(), 300); }, 3000); }
 function toggleForms() { document.getElementById("loginForm").classList.toggle("hidden"); document.getElementById("regForm").classList.toggle("hidden"); const t = document.getElementById("pageTitle"); t.innerText = t.innerText === "Жүйеге кіру" ? "Жаңа аккаунт ашу" : "Жүйеге кіру"; }
-function updateStats(newXP, newStreak) {
-    const name = localStorage.getItem("userName"); let xp = newXP !== undefined ? newXP : (localStorage.getItem("userXP") || 0); let streak = newStreak !== undefined ? newStreak : (localStorage.getItem("userStreak") || 0);
-    localStorage.setItem("userXP", xp); localStorage.setItem("userStreak", streak);
-    document.getElementById("userInfo").innerHTML = `Сәлем, <b>${name}</b>! <span class="xp-badge">🏆 ${xp} XP</span> <span class="streak-badge">🔥 ${streak} күн</span>`; checkAchievements(); 
-}
+function updateStats(newXP, newStreak) { const name = localStorage.getItem("userName"); let xp = newXP !== undefined ? newXP : (localStorage.getItem("userXP") || 0); let streak = newStreak !== undefined ? newStreak : (localStorage.getItem("userStreak") || 0); localStorage.setItem("userXP", xp); localStorage.setItem("userStreak", streak); document.getElementById("userInfo").innerHTML = `Сәлем, <b>${name}</b>! <span class="xp-badge">🏆 ${xp} XP</span> <span class="streak-badge">🔥 ${streak} күн</span>`; checkAchievements(); }
 
-function switchTab(tabId) { ["dashboardView", "lessonView", "examView", "profileView", "leaderboardView", "roadmapView"].forEach(id => { document.getElementById(id).classList.add("hidden"); }); document.getElementById(tabId).classList.remove("hidden"); document.getElementById("lessonVideo").src = ""; if(tabId === 'profileView') checkAchievements(); }
+function switchTab(tabId) { ["dashboardView", "lessonView", "examView", "profileView", "leaderboardView", "roadmapView", "battleView", "adminView"].forEach(id => { document.getElementById(id).classList.add("hidden"); }); document.getElementById(tabId).classList.remove("hidden"); document.getElementById("lessonVideo").src = ""; if(tabId === 'profileView') checkAchievements(); }
 
-async function login() {
-    const res = await fetch(`${API_URL}/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: document.getElementById("loginEmail").value, password: document.getElementById("loginPass").value }) });
-    const data = await res.json();
-    if (data.access_token) { localStorage.setItem("token", data.access_token); localStorage.setItem("userName", data.name); localStorage.setItem("userXP", data.xp); localStorage.setItem("userStreak", data.streak); localStorage.setItem("quest1", "done"); window.location.reload(); } else { showToast("Қате", "error"); }
-}
+async function login() { const res = await fetch(`${API_URL}/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: document.getElementById("loginEmail").value, password: document.getElementById("loginPass").value }) }); const data = await res.json(); if (data.access_token) { localStorage.setItem("token", data.access_token); localStorage.setItem("userName", data.name); localStorage.setItem("userXP", data.xp); localStorage.setItem("userStreak", data.streak); localStorage.setItem("quest1", "done"); window.location.reload(); } else { showToast("Қате", "error"); } }
 async function register() { const res = await fetch(`${API_URL}/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: document.getElementById("regName").value, email: document.getElementById("regEmail").value, password: document.getElementById("regPass").value }) }); if (res.ok) { showToast("Тіркелдіңіз!", "success"); toggleForms(); } else { showToast("Қате", "error"); } }
 function logout() { localStorage.clear(); window.location.reload(); }
 
-async function loadCourses() {
-    const container = document.getElementById("coursesContainer");
-    try {
-        const res = await fetch(`${API_URL}/courses-full`); const courses = await res.json();
-        if (courses.length === 0) return; container.innerHTML = "";
-        courses.forEach(c => {
-            let mods = c.modules.map(m => `<div class="module-box"><div class="module-header" onclick="this.nextElementSibling.classList.toggle('hidden')">📂 ${m.title}</div><div class="lessons-list hidden">${m.lessons.map(l => `<div class="lesson-item" onclick="openLesson('${l.title.replace(/'/g, "\\'")}', '${l.video_url || ""}')">▶️ ${l.title}</div>`).join("")}</div></div>`).join("");
-            container.innerHTML += `<div class="course-card"><div class="course-header" onclick="this.nextElementSibling.classList.toggle('hidden')"><img src="${c.image_url}"><div style="flex-grow:1;"><h4 style="margin:0;">${c.title}</h4></div><span style="color:#94a3b8;">▼</span></div><div class="course-body hidden">${mods}</div></div>`;
-        });
-    } catch (err) { console.error(err); }
-}
+async function loadCourses() { const container = document.getElementById("coursesContainer"); try { const res = await fetch(`${API_URL}/courses-full`); const courses = await res.json(); if (courses.length === 0) return; container.innerHTML = ""; courses.forEach(c => { let mods = c.modules.map(m => `<div class="module-box"><div class="module-header" onclick="this.nextElementSibling.classList.toggle('hidden')">📂 ${m.title}</div><div class="lessons-list hidden">${m.lessons.map(l => `<div class="lesson-item" onclick="openLesson('${l.title.replace(/'/g, "\\'")}', '${l.video_url || ""}')">▶️ ${l.title}</div>`).join("")}</div></div>`).join(""); container.innerHTML += `<div class="course-card"><div class="course-header" onclick="this.nextElementSibling.classList.toggle('hidden')"><img src="${c.image_url}"><div style="flex-grow:1;"><h4 style="margin:0;">${c.title}</h4></div><span style="color:#94a3b8;">▼</span></div><div class="course-body hidden">${mods}</div></div>`; }); } catch (err) { console.error(err); } }
 
-async function openLesson(title, videoUrl) {
-    currentTopic = title; switchTab('lessonView'); document.getElementById("lessonTitleDisplay").innerText = title; document.getElementById("lessonContentDisplay").innerHTML = "<i style='color: #64748b;'>⏳ Конспект ЖИ арқылы жасалуда...</i>"; document.getElementById("quizSection").classList.add("hidden"); document.getElementById("flashcardsSection").classList.add("hidden");
-    const vc = document.getElementById("videoContainer"); const vf = document.getElementById("lessonVideo");
-    if (videoUrl && videoUrl.includes("youtube")) { vf.src = videoUrl.replace("watch?v=", "embed/"); vc.style.display = "block"; } else { vf.src = ""; vc.style.display = "none"; }
-    try {
-        const res = await fetch(`${API_URL}/generate-lesson`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: title }) }); const data = await res.json();
-        if(window.marked) { document.getElementById("lessonContentDisplay").innerHTML = marked.parse(data.content); } else { document.getElementById("lessonContentDisplay").innerText = data.content; }
-        if(window.MathJax) { MathJax.typesetPromise(); }
-    } catch (err) { document.getElementById("lessonContentDisplay").innerHTML = "<b style='color:red;'>❌ Қате.</b>"; }
-}
-
+async function openLesson(title, videoUrl) { currentTopic = title; switchTab('lessonView'); document.getElementById("lessonTitleDisplay").innerText = title; document.getElementById("lessonContentDisplay").innerHTML = "<i style='color: #64748b;'>⏳ Конспект ЖИ арқылы жасалуда...</i>"; document.getElementById("quizSection").classList.add("hidden"); document.getElementById("flashcardsSection").classList.add("hidden"); const vc = document.getElementById("videoContainer"); const vf = document.getElementById("lessonVideo"); if (videoUrl && videoUrl.includes("youtube")) { vf.src = videoUrl.replace("watch?v=", "embed/"); vc.style.display = "block"; } else { vf.src = ""; vc.style.display = "none"; } try { const res = await fetch(`${API_URL}/generate-lesson`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: title }) }); const data = await res.json(); if(window.marked) { document.getElementById("lessonContentDisplay").innerHTML = marked.parse(data.content); } else { document.getElementById("lessonContentDisplay").innerText = data.content; } if(window.MathJax) { MathJax.typesetPromise(); } } catch (err) { document.getElementById("lessonContentDisplay").innerHTML = "<b style='color:red;'>❌ Қате.</b>"; } }
 function completeLesson() { showToast("Сабақ аяқталды! +50 XP", "success"); let xp = parseInt(localStorage.getItem("userXP")||0); updateStats(xp+50, undefined); localStorage.setItem("quest2", "done"); checkQuests(); switchTab('dashboardView'); }
 
-async function startAiFlashcards() {
-    const sec = document.getElementById("flashcardsSection"); sec.classList.remove("hidden"); const container = document.getElementById("flashcardsContainer"); container.innerHTML = "<p>⏳ Флешкарталар жасалуда...</p>";
-    try {
-        const res = await fetch(`${API_URL}/generate-flashcards`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: currentTopic }) }); const data = await res.json();
-        if(data.cards && data.cards.length > 0) { container.innerHTML = data.cards.map(c => `<div class="flashcard" onclick="this.classList.toggle('flipped')"><div class="flashcard-inner"><div class="flashcard-front">${c.front}</div><div class="flashcard-back">${c.back}</div></div></div>`).join(""); if(window.MathJax) MathJax.typesetPromise(); showToast("Флешкарталар дайын!", "success"); } else { container.innerHTML = "<p>Табылмады.</p>"; }
-    } catch(err) { container.innerHTML = "<p style='color:red;'>Қате.</p>"; }
-}
+async function startAiFlashcards() { const sec = document.getElementById("flashcardsSection"); sec.classList.remove("hidden"); const container = document.getElementById("flashcardsContainer"); container.innerHTML = "<p>⏳ Флешкарталар жасалуда...</p>"; try { const res = await fetch(`${API_URL}/generate-flashcards`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: currentTopic }) }); const data = await res.json(); if(data.cards && data.cards.length > 0) { container.innerHTML = data.cards.map(c => `<div class="flashcard" onclick="this.classList.toggle('flipped')"><div class="flashcard-inner"><div class="flashcard-front">${c.front}</div><div class="flashcard-back">${c.back}</div></div></div>`).join(""); if(window.MathJax) MathJax.typesetPromise(); showToast("Флешкарталар дайын!", "success"); } else { container.innerHTML = "<p>Табылмады.</p>"; } } catch(err) { container.innerHTML = "<p style='color:red;'>Қате.</p>"; } }
 
-async function startAiQuiz() {
-    document.getElementById("quizSection").classList.remove("hidden"); document.getElementById("quizQuestion").innerText = "Сұрақтар құрастырылуда... ⏳"; document.getElementById("quizOptions").innerHTML = ""; document.getElementById("nextQuizBtn").classList.add("hidden"); currentQuizIndex = 0; correctAnswers = 0;
-    const res = await fetch(`${API_URL}/generate-quiz`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: currentTopic }) }); const data = await res.json(); currentQuizData = data.quiz; renderQuizQuestion();
-}
-function renderQuizQuestion() {
-    if(currentQuizIndex >= currentQuizData.length) {
-        document.getElementById("quizQuestion").innerText = `🎉 Аяқталды! Дұрыс: ${correctAnswers}/${currentQuizData.length}.`; document.getElementById("quizOptions").innerHTML = ""; document.getElementById("nextQuizBtn").classList.add("hidden");
-        if(correctAnswers > 0) { fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: correctAnswers * 10 }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); }); showToast(`Тест аяқталды! +${correctAnswers*10} XP`, "success"); localStorage.setItem("quest3", "done"); checkQuests(); } return;
-    }
-    const q = currentQuizData[currentQuizIndex]; document.getElementById("quizQuestion").innerText = `${currentQuizIndex + 1}. ${q.q}`; document.getElementById("quizOptions").innerHTML = q.options.map(opt => `<div class="quiz-opt" onclick="checkQuizAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.ans.replace(/'/g, "\\'")}')">${opt}</div>`).join(""); document.getElementById("nextQuizBtn").classList.add("hidden");
-}
+async function startAiQuiz() { document.getElementById("quizSection").classList.remove("hidden"); document.getElementById("quizQuestion").innerText = "Сұрақтар құрастырылуда... ⏳"; document.getElementById("quizOptions").innerHTML = ""; document.getElementById("nextQuizBtn").classList.add("hidden"); currentQuizIndex = 0; correctAnswers = 0; const res = await fetch(`${API_URL}/generate-quiz`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: currentTopic }) }); const data = await res.json(); currentQuizData = data.quiz; renderQuizQuestion(); }
+function renderQuizQuestion() { if(currentQuizIndex >= currentQuizData.length) { document.getElementById("quizQuestion").innerText = `🎉 Аяқталды! Дұрыс: ${correctAnswers}/${currentQuizData.length}.`; document.getElementById("quizOptions").innerHTML = ""; document.getElementById("nextQuizBtn").classList.add("hidden"); if(correctAnswers > 0) { fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: correctAnswers * 10 }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); }); showToast(`Тест аяқталды! +${correctAnswers*10} XP`, "success"); localStorage.setItem("quest3", "done"); checkQuests(); } return; } const q = currentQuizData[currentQuizIndex]; document.getElementById("quizQuestion").innerText = `${currentQuizIndex + 1}. ${q.q}`; document.getElementById("quizOptions").innerHTML = q.options.map(opt => `<div class="quiz-opt" onclick="checkQuizAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.ans.replace(/'/g, "\\'")}')">${opt}</div>`).join(""); document.getElementById("nextQuizBtn").classList.add("hidden"); }
 function checkQuizAnswer(div, selected, correct) { if(!document.getElementById("nextQuizBtn").classList.contains("hidden")) return; if(selected.includes(correct) || correct.includes(selected)) { div.style.background = "#10b981"; div.style.color = "white"; correctAnswers++; } else { div.style.background = "#ef4444"; div.style.color = "white"; } document.getElementById("nextQuizBtn").classList.remove("hidden"); }
 function nextQuizQuestion() { currentQuizIndex++; renderQuizQuestion(); }
 
-const mockDb = [{ q: "4, 8, 12... жалғастырыңыз", options: ["14", "16", "18", "20"], ans: "16" }, { q: "x + 5 = 12, x=?", options: ["5", "6", "7", "8"], ans: "7" }];
-function startMockExam() { document.getElementById("examIntro").classList.add("hidden"); document.getElementById("examActive").classList.remove("hidden"); examQuestions = []; for(let i=0; i<15; i++) examQuestions.push(mockDb[i % mockDb.length]); userAnswers = {}; currentExamIndex = 0; timeRemaining = 40 * 60; clearInterval(examTimerInterval); examTimerInterval = setInterval(() => { if (timeRemaining <= 0) { clearInterval(examTimerInterval); finishExam(); return; } timeRemaining--; let m = Math.floor(timeRemaining/60); let s = timeRemaining%60; document.getElementById("examTimer").innerText = `⏱️ ${m}:${s<10?'0':''}${s}`; }, 1000); showExamQuestion(0); }
+const mockExamDb = [{ q: "4, 8, 12... жалғастырыңыз", options: ["14", "16", "18", "20"], ans: "16" }, { q: "x + 5 = 12, x=?", options: ["5", "6", "7", "8"], ans: "7" }];
+function startMockExam() { document.getElementById("examIntro").classList.add("hidden"); document.getElementById("examActive").classList.remove("hidden"); examQuestions = []; for(let i=0; i<15; i++) examQuestions.push(mockExamDb[i % mockExamDb.length]); userAnswers = {}; currentExamIndex = 0; timeRemaining = 40 * 60; clearInterval(examTimerInterval); examTimerInterval = setInterval(() => { if (timeRemaining <= 0) { clearInterval(examTimerInterval); finishExam(); return; } timeRemaining--; let m = Math.floor(timeRemaining/60); let s = timeRemaining%60; document.getElementById("examTimer").innerText = `⏱️ ${m}:${s<10?'0':''}${s}`; }, 1000); showExamQuestion(0); }
 function renderExamNav() { document.getElementById("examNav").innerHTML = examQuestions.map((_, i) => `<button class="nav-btn ${i === currentExamIndex ? 'active' : ''} ${userAnswers[i] ? 'answered' : ''}" onclick="showExamQuestion(${i})">${i+1}</button>`).join(""); }
 function showExamQuestion(idx) { currentExamIndex = idx; const q = examQuestions[idx]; document.getElementById("examQuestionText").innerText = `${idx + 1}. ${q.q}`; document.getElementById("examOptions").innerHTML = q.options.map(opt => `<div class="quiz-opt" style="${userAnswers[idx] === opt ? 'background:var(--primary);color:white;' : ''}" onclick="userAnswers[currentExamIndex]='${opt.replace(/'/g, "\\'")}'; showExamQuestion(currentExamIndex);">${opt}</div>`).join(""); renderExamNav(); }
 function prevExamQuestion() { if(currentExamIndex > 0) showExamQuestion(currentExamIndex - 1); }
 function nextExamQuestion() { if(currentExamIndex < 14) showExamQuestion(currentExamIndex + 1); }
-
-function finishExam() { 
-    clearInterval(examTimerInterval); document.getElementById("examActive").classList.add("hidden"); document.getElementById("examResult").classList.remove("hidden"); 
-    let score = 0; let reviewHtml = ""; 
-    for(let i=0; i<15; i++) {
-        if(userAnswers[i] === examQuestions[i].ans) { score++; } 
-        else {
-            let uAns = userAnswers[i] || "Жауап жоқ"; let cAns = examQuestions[i].ans; let qText = examQuestions[i].q;
-            reviewHtml += `<div class="review-item"><p>${i+1}. ${qText}</p><span class="wrong">❌ ${uAns}</span><span class="correct">✅ ${cAns}</span><button class="btn-secondary" style="display:block; margin-top:10px; font-size:0.8rem;" onclick="askAiToExplain('${qText.replace(/'/g, "\\'")}', '${cAns.replace(/'/g, "\\'")}')">🤖 Түсіндіру</button></div>`;
-        }
-    }
-    document.getElementById("examScoreDisplay").innerText = `${score}/15`; document.getElementById("examFeedback").innerText = `Жақсы нәтиже! +${score*20} XP`; 
-    const reviewBox = document.getElementById("examReviewBox"); if(score === 15) { reviewBox.innerHTML = "<p style='color:#10b981; font-weight:bold;'>Қате жоқ!</p>"; } else { reviewBox.innerHTML = reviewHtml; }
-    let history = JSON.parse(localStorage.getItem("examHistory") || "[]"); history.push(score); localStorage.setItem("examHistory", JSON.stringify(history)); 
-    if(score > 0) { fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: score*20 }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); }); showToast(`Аяқталды!`, "success"); } 
-}
+function finishExam() { clearInterval(examTimerInterval); document.getElementById("examActive").classList.add("hidden"); document.getElementById("examResult").classList.remove("hidden"); let score = 0; let reviewHtml = ""; for(let i=0; i<15; i++) { if(userAnswers[i] === examQuestions[i].ans) { score++; } else { let uAns = userAnswers[i] || "Жауап жоқ"; let cAns = examQuestions[i].ans; let qText = examQuestions[i].q; reviewHtml += `<div class="review-item"><p>${i+1}. ${qText}</p><span class="wrong">❌ ${uAns}</span><span class="correct">✅ ${cAns}</span><button class="btn-secondary" style="display:block; margin-top:10px; font-size:0.8rem;" onclick="askAiToExplain('${qText.replace(/'/g, "\\'")}', '${cAns.replace(/'/g, "\\'")}')">🤖 Түсіндіру</button></div>`; } } document.getElementById("examScoreDisplay").innerText = `${score}/15`; document.getElementById("examFeedback").innerText = `Жақсы нәтиже! +${score*20} XP`; const reviewBox = document.getElementById("examReviewBox"); if(score === 15) { reviewBox.innerHTML = "<p style='color:#10b981; font-weight:bold;'>Қате жоқ!</p>"; } else { reviewBox.innerHTML = reviewHtml; } let history = JSON.parse(localStorage.getItem("examHistory") || "[]"); history.push(score); localStorage.setItem("examHistory", JSON.stringify(history)); if(score > 0) { fetch(`${API_URL}/add-xp`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ points: score*20 }) }).then(r=>r.json()).then(d=>{ if(d.new_xp) updateStats(d.new_xp); }); showToast(`Аяқталды!`, "success"); } }
 function askAiToExplain(question, answer) { switchTab('dashboardView'); const input = document.getElementById("chatInput"); input.value = `Сұрақтың жауабы неге "${answer}" екенін түсіндірші: ${question}`; sendChat(); }
 
 function showProfile() { switchTab('profileView'); document.getElementById("profXp").innerText = localStorage.getItem("userXP") || 0; document.getElementById("profStreak").innerText = (localStorage.getItem("userStreak") || 0) + " күн"; let history = JSON.parse(localStorage.getItem("examHistory") || "[]"); document.getElementById("profTests").innerText = history.length; const ctx = document.getElementById('progressChart').getContext('2d'); if (progressChartInstance) progressChartInstance.destroy(); progressChartInstance = new Chart(ctx, { type: 'line', data: { labels: history.length > 0 ? history.map((_, i) => `Тест ${i + 1}`) : ["Тест 1", "Тест 2", "Тест 3"], datasets: [{ label: 'Сынақ ұпайлары', data: history.length > 0 ? history : [0, 0, 0], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 15 } } } }); }
 async function showLeaderboard() { switchTab('leaderboardView'); const container = document.getElementById('leaderboardContent'); container.innerHTML = "<p>⏳ Рейтинг...</p>"; try { const res = await fetch(`${API_URL}/leaderboard`); const data = await res.json(); if (data.length === 0) { container.innerHTML = "<p>Бос.</p>"; return; } let html = `<div class="podium-container">`; if(data[1]) html += `<div class="podium-step second"><div class="podium-avatar">🥈</div><div class="podium-name">${data[1].name}</div><div class="podium-xp">${data[1].xp} XP</div></div>`; if(data[0]) html += `<div class="podium-step first"><div class="podium-avatar">👑</div><div class="podium-name">${data[0].name}</div><div class="podium-xp">${data[0].xp} XP</div></div>`; if(data[2]) html += `<div class="podium-step third"><div class="podium-avatar">🥉</div><div class="podium-name">${data[2].name}</div><div class="podium-xp">${data[2].xp} XP</div></div>`; html += `</div><div class="rank-list">`; for(let i=3; i<data.length; i++) { const isMe = data[i].name === localStorage.getItem("userName") ? "my-rank" : ""; html += `<div class="rank-item ${isMe}"><span><b>${i+1}.</b> ${data[i].name}</span> <b style="color:var(--primary);">${data[i].xp} XP</b></div>`; } html += `</div>`; container.innerHTML = html; } catch (err) { container.innerHTML = "<p style='color:red;'>❌ Қате.</p>"; } }
 
 const toBase64 = file => new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve(reader.result); });
-async function sendChat() {
-    const input = document.getElementById("chatInput"); const imageInput = document.getElementById("imageInput"); const box = document.getElementById("chatBox"); const msg = input.value.trim(); const file = imageInput.files[0]; if (!msg && !file) return; if (msg) { userQuestions.push(msg); if (userQuestions.length > 5) userQuestions.shift(); } let payloadMessage = msg; let endpoint = `${API_URL}/chat`; if (file) { const base64 = await toBase64(file); payloadMessage = base64; endpoint = `${API_URL}/chat-vision`; box.innerHTML += `<div class="user-msg"><img src="${base64}" style="max-width:200px; border-radius:10px; margin-bottom:5px;"><br>${msg}</div>`; } else { box.innerHTML += `<div class="user-msg">${msg}</div>`; } input.value = ""; imageInput.value = ""; box.scrollTop = box.scrollHeight; const loadingId = "load-" + Date.now(); box.innerHTML += `<div id="${loadingId}" class="bot-msg" style="color: gray;"><i>⏳ Ойланып жатырмын...</i></div>`; box.scrollTop = box.scrollHeight; const token = localStorage.getItem("token"); const headers = { "Content-Type": "application/json" }; if (token) headers["Authorization"] = `Bearer ${token}`; try { const res = await fetch(endpoint, { method: "POST", headers: headers, body: JSON.stringify({ message: payloadMessage }) }); const data = await res.json(); updateStats(data.new_xp, data.new_streak); document.getElementById(loadingId).remove(); let replyHtml = data.reply || "❌ Қате"; let safeText = replyHtml.replace(/'/g, "\\'").replace(/"/g, '&quot;'); box.innerHTML += `<div class="bot-msg" style="display:flex; gap:10px; align-items:start;"><div>${replyHtml}</div><button class="btn-speak" onclick="speakText('${safeText}')" title="Дауыстап оқу">🔊</button></div>`; box.scrollTop = box.scrollHeight; if (window.MathJax) MathJax.typesetPromise(); } catch (err) { if(document.getElementById(loadingId)) document.getElementById(loadingId).remove(); showToast("Байланыс жоқ", "error"); }
-}
+async function sendChat() { const input = document.getElementById("chatInput"); const imageInput = document.getElementById("imageInput"); const box = document.getElementById("chatBox"); const msg = input.value.trim(); const file = imageInput.files[0]; if (!msg && !file) return; if (msg) { userQuestions.push(msg); if (userQuestions.length > 5) userQuestions.shift(); } let payloadMessage = msg; let endpoint = `${API_URL}/chat`; if (file) { const base64 = await toBase64(file); payloadMessage = base64; endpoint = `${API_URL}/chat-vision`; box.innerHTML += `<div class="user-msg"><img src="${base64}" style="max-width:200px; border-radius:10px; margin-bottom:5px;"><br>${msg}</div>`; } else { box.innerHTML += `<div class="user-msg">${msg}</div>`; } input.value = ""; imageInput.value = ""; box.scrollTop = box.scrollHeight; const loadingId = "load-" + Date.now(); box.innerHTML += `<div id="${loadingId}" class="bot-msg" style="color: gray;"><i>⏳ Ойланып жатырмын...</i></div>`; box.scrollTop = box.scrollHeight; const token = localStorage.getItem("token"); const headers = { "Content-Type": "application/json" }; if (token) headers["Authorization"] = `Bearer ${token}`; try { const res = await fetch(endpoint, { method: "POST", headers: headers, body: JSON.stringify({ message: payloadMessage }) }); const data = await res.json(); updateStats(data.new_xp, data.new_streak); document.getElementById(loadingId).remove(); let replyHtml = data.reply || "❌ Қате"; let safeText = replyHtml.replace(/'/g, "\\'").replace(/"/g, '&quot;'); box.innerHTML += `<div class="bot-msg" style="display:flex; gap:10px; align-items:start;"><div>${replyHtml}</div><button class="btn-speak" onclick="speakText('${safeText}')" title="Дауыстап оқу">🔊</button></div>`; box.scrollTop = box.scrollHeight; if (window.MathJax) MathJax.typesetPromise(); } catch (err) { if(document.getElementById(loadingId)) document.getElementById(loadingId).remove(); showToast("Байланыс жоқ", "error"); } }
 
 window.addEventListener('DOMContentLoaded', () => {
     if(localStorage.getItem('theme') === 'dark') document.body.setAttribute('data-theme', 'dark');

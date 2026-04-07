@@ -3,6 +3,7 @@ import json
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -125,7 +126,6 @@ def generate_flashcards(req: LessonRequest, authorization: str = Header(None)):
         return {"cards": json.loads(reply)}
     except Exception as e: return {"cards": []}
 
-# ЖАҢА: ОҚУ ЖОСПАРЫН ЖАСАУ
 @router.post("/generate-roadmap")
 def generate_roadmap(req: RoadmapRequest, authorization: str = Header(None)):
     prompt = f"Оқушының мақсаты: '{req.target}'. Осы мақсатқа жету үшін ҰБТ-ға дайындықтың мотивациялық, 4 апталық (әр аптаға 1-2 сөйлемнен) нақты оқу жоспарын жасап бер. Markdown қолдан."
@@ -150,3 +150,12 @@ def get_leaderboard(db: Session = Depends(get_db)): return [{"name": u.name, "xp
 @router.post("/add-xp")
 def add_custom_xp(req: dict, authorization: str = Header(None), db: Session = Depends(get_db)):
     stats = add_xp_to_user(authorization, req.get("points", 0), db); return {"new_xp": stats["xp"] if stats else None}
+
+# ЖАҢА: АДМИН ПАНЕЛЬ СТАТИСТИКАСЫ
+@router.get("/admin/stats")
+def get_admin_stats(db: Session = Depends(get_db)):
+    total_users = db.query(models.User).count()
+    total_xp = db.query(func.sum(models.User.xp)).scalar() or 0
+    top_user = db.query(models.User).order_by(models.User.xp.desc()).first()
+    top_name = top_user.name if top_user else "Жоқ"
+    return {"total_users": total_users, "total_xp": total_xp, "top_user": top_name}
