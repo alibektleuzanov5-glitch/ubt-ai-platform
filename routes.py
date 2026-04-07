@@ -23,6 +23,7 @@ ai_client = Groq(api_key=GROQ_API_KEY)
 
 class QuizRequest(BaseModel): topic: str
 class LessonRequest(BaseModel): topic: str
+class RoadmapRequest(BaseModel): target: str
 
 def get_password_hash(password): return pwd_context.hash(password[:70])
 def verify_password(plain_password, hashed_password): return pwd_context.verify(plain_password[:70], hashed_password)
@@ -84,8 +85,7 @@ def auto_seed_data(db: Session):
 def register(user: models.UserRegister, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == user.email).first(): raise HTTPException(status_code=400, detail="Email тіркелген")
     db.add(models.User(name=user.name, email=user.email, hashed_password=get_password_hash(user.password)))
-    db.commit()
-    return {"message": "Сәтті!"}
+    db.commit(); return {"message": "Сәтті!"}
 
 @router.post("/login")
 def login(user: models.UserLogin, db: Session = Depends(get_db)):
@@ -124,6 +124,15 @@ def generate_flashcards(req: LessonRequest, authorization: str = Header(None)):
         reply = comp.choices[0].message.content.replace("```json", "").replace("```", "").strip()
         return {"cards": json.loads(reply)}
     except Exception as e: return {"cards": []}
+
+# ЖАҢА: ОҚУ ЖОСПАРЫН ЖАСАУ
+@router.post("/generate-roadmap")
+def generate_roadmap(req: RoadmapRequest, authorization: str = Header(None)):
+    prompt = f"Оқушының мақсаты: '{req.target}'. Осы мақсатқа жету үшін ҰБТ-ға дайындықтың мотивациялық, 4 апталық (әр аптаға 1-2 сөйлемнен) нақты оқу жоспарын жасап бер. Markdown қолдан."
+    try:
+        comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "Сен тәжірибелі ҰБТ тәлімгерісің."}, {"role": "user", "content": prompt}], model="llama-3.1-8b-instant")
+        return {"roadmap": comp.choices[0].message.content}
+    except Exception as e: return {"roadmap": "Қате кетті."}
 
 @router.post("/chat-vision")
 def chat_with_vision(req: models.ChatMessage, authorization: str = Header(None), db: Session = Depends(get_db)):

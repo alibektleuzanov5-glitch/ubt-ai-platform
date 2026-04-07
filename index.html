@@ -13,14 +13,23 @@
 </head>
 <body>
     <div id="toastContainer" class="toast-container"></div>
+    
+    <button class="btn-float-wb" onclick="toggleWhiteboard()">✍️ Қаралама</button>
+    <div id="whiteboardOverlay" class="wb-overlay hidden">
+        <div class="wb-tools">
+            <span style="color:white; font-weight:bold;">✍️ Есеп шығару тақтасы</span>
+            <div>
+                <button onclick="clearWhiteboard()" class="btn-secondary" style="background:#ef4444;">🗑️ Өшіру</button>
+                <button onclick="toggleWhiteboard()" class="btn-secondary">✖ Жабу</button>
+            </div>
+        </div>
+        <canvas id="wbCanvas"></canvas>
+    </div>
 
     <div id="dailyRewardModal" class="modal-overlay hidden">
         <div class="modal-content reward-card">
             <h2>🎁 Күнделікті Сыйлық!</h2>
-            <p>Қайта оралғаныңызға қуаныштымыз. Бүгінгі сыйлығыңызды алыңыз:</p>
-            <div class="reward-box" id="rewardBox" onclick="claimDailyReward()">
-                📦 Сандықты ашу
-            </div>
+            <div class="reward-box" id="rewardBox" onclick="claimDailyReward()">📦 Ашу</div>
         </div>
     </div>
 
@@ -28,14 +37,12 @@
         <div class="modal-content pro-card">
             <button onclick="closeProModal()" class="close-btn">✖</button>
             <h2 style="color: #fbbf24; margin-top: 0;">💎 AXIOM PRO</h2>
-            <p>Платформаның барлық мүмкіндігін шектеусіз қолданыңыз!</p>
             <ul style="text-align: left; margin: 20px 0; line-height: 1.8;">
                 <li>✅ ЖИ Мұғаліммен шектеусіз сөйлесу</li>
-                <li>✅ 10 000+ ҰБТ тест сұрақтарына кіру</li>
-                <li>✅ Толыққанды бейнесабақтар</li>
-                <li>✅ ЖИ Аудио-мұғалім дауысы</li>
+                <li>✅ 10 000+ тест сұрақтары</li>
+                <li>✅ Аудио-мұғалім дауысы</li>
             </ul>
-            <h1 style="color: white; margin: 10px 0;">4 990 ₸ <span style="font-size: 1rem; color: #cbd5e1;">/ айына</span></h1>
+            <h1 style="color: white; margin: 10px 0;">4 990 ₸</h1>
             <button class="btn-kaspi" onclick="alert('Kaspi төлем жүйесі жақында қосылады!')">Kaspi арқылы төлеу</button>
         </div>
     </div>
@@ -43,51 +50,27 @@
     <div id="authContainer" class="auth-wrapper">
         <div class="auth-card">
             <div class="logo auth-logo" style="justify-content: center;">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 30px; height: 30px;">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                    <polyline points="2 17 12 22 22 17"></polyline>
-                    <polyline points="2 12 12 17 22 12"></polyline>
-                </svg>
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 30px; height: 30px;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 <b>AXIOM</b> <span style="font-weight: 300;">AI</span>
             </div>
             <h2 id="pageTitle">Жүйеге кіру</h2>
-            <div id="loginForm">
-                <input type="email" id="loginEmail" placeholder="Email" class="input-field">
-                <input type="password" id="loginPass" placeholder="Құпия сөз" class="input-field">
-                <button onclick="login()" class="btn-primary">Кіру</button>
-            </div>
-            <div id="regForm" class="hidden">
-                <input type="text" id="regName" placeholder="Толық атыңыз" class="input-field">
-                <input type="email" id="regEmail" placeholder="Email" class="input-field">
-                <input type="password" id="regPass" placeholder="Құпия сөз" class="input-field">
-                <button onclick="register()" class="btn-primary">Тіркелу</button>
-            </div>
+            <div id="loginForm"><input type="email" id="loginEmail" placeholder="Email" class="input-field"><input type="password" id="loginPass" placeholder="Құпия сөз" class="input-field"><button onclick="login()" class="btn-primary">Кіру</button></div>
+            <div id="regForm" class="hidden"><input type="text" id="regName" placeholder="Атыңыз" class="input-field"><input type="email" id="regEmail" placeholder="Email" class="input-field"><input type="password" id="regPass" placeholder="Құпия сөз" class="input-field"><button onclick="register()" class="btn-primary">Тіркелу</button></div>
             <p onclick="toggleForms()" class="toggle-link">Аккаунт жоқ па? Тіркелу</p>
         </div>
     </div>
 
     <div id="mainContent" class="dashboard-wrapper hidden">
-        
         <aside class="sidebar">
             <div class="logo">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                    <polyline points="2 17 12 22 22 17"></polyline>
-                    <polyline points="2 12 12 17 22 12"></polyline>
-                </svg>
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 <b>AXIOM</b> <span style="font-weight: 300;">AI</span>
             </div>
-            
-            <div class="pomodoro-widget">
-                <div class="pomo-title">🍅 Фокус Таймер</div>
-                <div id="pomoTime">25:00</div>
-                <button id="pomoBtn" onclick="togglePomodoro()">Бастау</button>
-            </div>
-
+            <div class="pomodoro-widget"><div class="pomo-title">🍅 Фокус Таймер</div><div id="pomoTime">25:00</div><button id="pomoBtn" onclick="togglePomodoro()">Бастау</button></div>
             <nav class="nav-menu">
                 <a href="#" onclick="switchTab('dashboardView')" class="active" id="navHome">🏠 Басты бет</a>
                 <a href="#" onclick="switchTab('dashboardView')">📚 Курстар</a>
-                <a href="#" onclick="showProfile()">👤 Профиль</a>
+                <a href="#" onclick="switchTab('roadmapView')">🗺️ Оқу Жоспары</a> <a href="#" onclick="showProfile()">👤 Профиль / Дүкен</a>
                 <a href="#" onclick="showLeaderboard()">🏆 Рейтинг</a>
                 <a href="#" onclick="switchTab('examView')">📝 Сынақ тестері</a>
                 <div style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px;">
@@ -99,33 +82,18 @@
         </aside>
 
         <main class="main-body">
-            <header class="top-bar">
-                <div id="userInfo" class="user-info">Жүктелуде...</div>
-            </header>
+            <header class="top-bar"><div id="userInfo" class="user-info">Жүктелуде...</div></header>
 
             <div id="dashboardView">
                 <div class="content-grid">
                     <section class="courses-section">
-                        <div class="quests-card">
-                            <h3 style="margin-top: 0; color: var(--primary);">🎯 Бүгінгі тапсырмалар</h3>
-                            <ul class="quests-list">
-                                <li id="quest1">⏳ Жүйеге кіру (+10 XP)</li>
-                                <li id="quest2">⏳ 1 сабақ оқу (+50 XP)</li>
-                                <li id="quest3">⏳ 1 ЖИ тест тапсыру (+30 XP)</li>
-                            </ul>
-                        </div>
-                        <h3>🚀 Менің курстарым</h3>
-                        <div id="coursesContainer" class="courses-grid"><p>Курстар жүктелуде...</p></div>
+                        <div class="quests-card"><h3 style="margin-top: 0; color: var(--primary);">🎯 Бүгінгі тапсырмалар</h3><ul class="quests-list"><li id="quest1">⏳ Жүйеге кіру (+10 XP)</li><li id="quest2">⏳ 1 сабақ оқу (+50 XP)</li><li id="quest3">⏳ 1 ЖИ тест тапсыру (+30 XP)</li></ul></div>
+                        <h3>🚀 Менің курстарым</h3><div id="coursesContainer" class="courses-grid"><p>Курстар жүктелуде...</p></div>
                     </section>
-                    
                     <section class="ai-section">
                         <div class="ai-header"><h3>🤖 ЖИ Мұғалім</h3></div>
                         <div id="chatBox" class="chat-window"><div class="bot-msg">Сәлем! Бүгін қай тақырыпты талдаймыз?</div></div>
-                        <div class="chat-input-area">
-                            <label class="img-btn">📷<input type="file" id="imageInput" accept="image/*" hidden></label>
-                            <input type="text" id="chatInput" placeholder="Сұрақ жазыңыз..." onkeypress="if(event.key === 'Enter') sendChat()">
-                            <button onclick="sendChat()" class="btn-send">Жіберу</button>
-                        </div>
+                        <div class="chat-input-area"><label class="img-btn">📷<input type="file" id="imageInput" accept="image/*" hidden></label><input type="text" id="chatInput" placeholder="Сұрақ жазыңыз..." onkeypress="if(event.key === 'Enter') sendChat()"><button onclick="sendChat()" class="btn-send">Жіберу</button></div>
                     </section>
                 </div>
             </div>
@@ -133,41 +101,20 @@
             <div id="lessonView" class="hidden">
                 <button onclick="switchTab('dashboardView')" class="btn-back">⬅ Тізімге қайту</button>
                 <div class="lesson-container">
-                    <div class="video-placeholder" id="videoContainer" style="display: none;">
-                        <iframe id="lessonVideo" width="100%" height="450" src="" frameborder="0" allowfullscreen></iframe>
-                    </div>
+                    <div class="video-placeholder" id="videoContainer" style="display: none;"><iframe id="lessonVideo" width="100%" height="450" src="" frameborder="0" allowfullscreen></iframe></div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h2 id="lessonTitleDisplay">Тақырып</h2>
                         <button onclick="downloadPDF('lessonContentDisplay', 'Конспект')" class="btn-secondary" style="font-size: 0.9rem;">📥 PDF жүктеу</button>
                     </div>
                     <div id="lessonContentDisplay" class="content-box">Мәтін</div>
-                    
-                    <div id="flashcardsSection" class="hidden" style="margin-top: 2rem; margin-bottom: 2rem;">
-                        <h3 style="color:var(--primary);">🃏 ЖИ Флешкарталары</h3>
-                        <div id="flashcardsContainer" class="flashcards-grid"></div>
-                    </div>
-
-                    <div id="quizSection" class="quiz-box hidden">
-                        <h3 style="color:var(--primary);">🧠 Тақырыптық Тест (ЖИ)</h3>
-                        <p id="quizQuestion" class="quiz-q">Сұрақ жүктелуде...</p>
-                        <div id="quizOptions" class="quiz-opts"></div>
-                        <button id="nextQuizBtn" onclick="nextQuizQuestion()" class="btn-primary hidden" style="margin-top:15px;">Келесі сұрақ</button>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button onclick="startAiFlashcards()" class="btn-secondary" style="flex:1;">🃏 Флешкарта</button>
-                        <button onclick="startAiQuiz()" class="btn-secondary" style="flex:1;">📝 Тест (ЖИ)</button>
-                        <button onclick="completeLesson()" class="btn-complete" style="flex:1;">✅ Аяқтау (+50 XP)</button>
-                    </div>
+                    <div id="flashcardsSection" class="hidden" style="margin-top: 2rem; margin-bottom: 2rem;"><h3 style="color:var(--primary);">🃏 ЖИ Флешкарталары</h3><div id="flashcardsContainer" class="flashcards-grid"></div></div>
+                    <div id="quizSection" class="quiz-box hidden"><h3 style="color:var(--primary);">🧠 Тақырыптық Тест (ЖИ)</h3><p id="quizQuestion" class="quiz-q">Сұрақ жүктелуде...</p><div id="quizOptions" class="quiz-opts"></div><button id="nextQuizBtn" onclick="nextQuizQuestion()" class="btn-primary hidden" style="margin-top:15px;">Келесі сұрақ</button></div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;"><button onclick="startAiFlashcards()" class="btn-secondary" style="flex:1;">🃏 Флешкарта</button><button onclick="startAiQuiz()" class="btn-secondary" style="flex:1;">📝 Тест (ЖИ)</button><button onclick="completeLesson()" class="btn-complete" style="flex:1;">✅ Аяқтау (+50 XP)</button></div>
                 </div>
             </div>
 
             <div id="examView" class="hidden">
-                <div id="examIntro" class="lesson-container">
-                    <h2>📝 ҰБТ Сынақ Тесті (Математикалық сауаттылық)</h2>
-                    <p>Барлығы 15 сұрақ беріледі. Уақыт: 40 минут.</p>
-                    <button onclick="startMockExam()" class="btn-primary" style="max-width: 200px;">Тестті бастау 🚀</button>
-                </div>
+                <div id="examIntro" class="lesson-container"><h2>📝 ҰБТ Сынақ Тесті (Математикалық сауаттылық)</h2><button onclick="startMockExam()" class="btn-primary" style="max-width: 200px;">Тестті бастау 🚀</button></div>
                 <div id="examActive" class="hidden">
                     <div class="exam-header"><h3>Математикалық сауаттылық</h3><div class="exam-timer" id="examTimer">⏱️ 40:00</div></div>
                     <div class="exam-layout">
@@ -175,75 +122,52 @@
                         <div class="exam-content">
                             <h3 id="examQuestionText" class="quiz-q">Сұрақ...</h3>
                             <div id="examOptions" class="quiz-opts"></div>
-                            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-                                <button onclick="prevExamQuestion()" class="btn-secondary">⬅ Алдыңғы</button><button onclick="nextExamQuestion()" class="btn-secondary">Келесі ➡</button>
-                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 20px;"><button onclick="prevExamQuestion()" class="btn-secondary">⬅ Алдыңғы</button><button onclick="nextExamQuestion()" class="btn-secondary">Келесі ➡</button></div>
                             <button onclick="finishExam()" class="btn-complete" style="margin-top: 20px; background: #ef4444;">🛑 Тестті аяқтау</button>
                         </div>
                     </div>
                 </div>
-                
                 <div id="examResult" class="lesson-container hidden" style="text-align: center;">
-                    <h2>🎉 Тест аяқталды!</h2>
-                    <h1 id="examScoreDisplay" style="color: var(--primary); font-size: 3rem; margin: 10px 0;">0/15</h1>
-                    <p id="examFeedback">Жақсы нәтиже!</p>
-                    
-                    <div style="margin-top: 2rem; text-align: left;">
-                        <h3 style="color: #ef4444;">🔍 Қатемен жұмыс:</h3>
-                        <div id="examReviewBox" class="review-box">
-                            </div>
-                    </div>
-
+                    <h2>🎉 Тест аяқталды!</h2><h1 id="examScoreDisplay" style="color: var(--primary); font-size: 3rem; margin: 10px 0;">0/15</h1>
+                    <div style="margin-top: 2rem; text-align: left;"><h3 style="color: #ef4444;">🔍 Қатемен жұмыс:</h3><div id="examReviewBox" class="review-box"></div></div>
                     <button onclick="switchTab('dashboardView')" class="btn-primary" style="max-width: 250px; margin-top: 20px;">Басты бетке оралу</button>
                 </div>
             </div>
 
             <div id="profileView" class="hidden">
                 <div class="lesson-container">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin-top: 0;">👤 Менің профилім</h2>
-                        <button id="certBtn" onclick="generateCertificate()" class="btn-secondary hidden" style="background: #fbbf24; color: #1e293b;">🎓 Сертификат алу</button>
-                    </div>
-
-                    <div class="profile-grid">
-                        <div class="stat-card"><h3>🏆 Жалпы XP</h3><p id="profXp" class="stat-value">0</p></div>
-                        <div class="stat-card"><h3>🔥 Қатарынан кіру</h3><p id="profStreak" class="stat-value">0 күн</p></div>
-                        <div class="stat-card"><h3>📝 Тапсырған тесттер</h3><p id="profTests" class="stat-value">0</p></div>
-                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;"><h2 style="margin-top: 0;">👤 Менің профилім</h2><button id="certBtn" onclick="generateCertificate()" class="btn-secondary hidden" style="background: #fbbf24; color: #1e293b;">🎓 Сертификат алу</button></div>
+                    <div class="profile-grid"><div class="stat-card"><h3>🏆 Жалпы XP</h3><p id="profXp" class="stat-value">0</p></div><div class="stat-card"><h3>🔥 Қатарынан кіру</h3><p id="profStreak" class="stat-value">0 күн</p></div><div class="stat-card"><h3>📝 Тапсырған тесттер</h3><p id="profTests" class="stat-value">0</p></div></div>
                     
-                    <h3 style="margin-top: 2rem; color: var(--primary);">🏅 Менің жетістіктерім (Бадждар)</h3>
-                    <div class="achievements-grid" id="achievementsBox"></div>
+                    <h3 style="margin-top: 2rem; color: #10b981;">🛒 XP Дүкені</h3>
+                    <div class="shop-card">
+                        <div>
+                            <h4>🧊 Стрик Құтқарушы (Streak Freeze)</h4>
+                            <p style="font-size:0.9rem; color:#64748b;">Егер 1 күн кірмей қалсаңыз, стриктің жанып кетуінен сақтайды.</p>
+                        </div>
+                        <button onclick="buyFreeze()" class="btn-primary" style="width: auto; background: #3b82f6;">500 XP төлеу</button>
+                    </div>
 
-                    <h3 style="margin-top: 2rem;">📈 Өсу динамикасы</h3>
-                    <div style="height: 300px; width: 100%; margin-top: 1rem;"><canvas id="progressChart"></canvas></div>
+                    <h3 style="margin-top: 2rem; color: var(--primary);">🏅 Менің жетістіктерім (Бадждар)</h3><div class="achievements-grid" id="achievementsBox"></div>
+                    <h3 style="margin-top: 2rem;">📈 Өсу динамикасы</h3><div style="height: 300px; width: 100%; margin-top: 1rem;"><canvas id="progressChart"></canvas></div>
                 </div>
             </div>
 
-            <div id="leaderboardView" class="hidden">
-                <div class="lesson-container" style="text-align: center;">
-                    <h2 style="margin-top: 0; font-size: 2rem; color: var(--primary);">🏆 Платформа Үздіктері</h2>
-                    <div id="leaderboardContent"><p>⏳ Рейтинг жүктелуде...</p></div>
+            <div id="roadmapView" class="hidden">
+                <div class="lesson-container">
+                    <h2>🗺️ ЖИ Оқу Жоспары</h2>
+                    <p>Арманыңыздағы университетті немесе мамандықты жазыңыз. ЖИ сізге арнайы дайындық картасын сызып береді.</p>
+                    <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                        <input type="text" id="roadmapTarget" placeholder="Мысалы: ҚазҰУ, АТ мамандығы немесе 120 балл" class="input-field" style="margin-bottom:0;">
+                        <button onclick="generateRoadmap()" class="btn-primary" style="width:auto;">Жоспар құру</button>
+                    </div>
+                    <div id="roadmapResult" class="content-box hidden"></div>
                 </div>
             </div>
+
+            <div id="leaderboardView" class="hidden"><div class="lesson-container" style="text-align: center;"><h2 style="margin-top: 0; font-size: 2rem; color: var(--primary);">🏆 Платформа Үздіктері</h2><div id="leaderboardContent"></div></div></div>
             
-            <div id="certTemplate" style="display:none; padding: 50px; text-align: center; background: #fff; color: #1e293b; border: 10px solid #1e40af; width: 800px; height: 600px; position: absolute; top: -9999px;">
-                <div style="border: 2px solid #fbbf24; padding: 40px; height: 100%; box-sizing: border-box;">
-                    <h1 style="color: #1e40af; font-size: 3rem; margin-bottom: 10px;">СЕРТИФИКАТ</h1>
-                    <h3 style="color: #64748b; margin-top: 0;">ЖЕТІСТІГІ ҮШІН БЕРІЛДІ</h3>
-                    <div style="margin: 40px 0;">
-                        <h2 id="certName" style="font-size: 2.5rem; text-decoration: underline;">Оқушы Аты</h2>
-                    </div>
-                    <p style="font-size: 1.2rem;">AXIOM AI платформасында 1000+ XP жинап, ҰБТ-ға дайындықта жоғары белсенділік танытқаны үшін марапатталады.</p>
-                    <div style="margin-top: 50px; display: flex; justify-content: space-around;">
-                        <div>
-                            <p style="font-weight: bold; border-top: 1px solid #000; padding-top: 5px;">AXIOM AI Басшылығы</p>
-                        </div>
-                        <div>
-                            <p id="certDate" style="font-weight: bold; border-top: 1px solid #000; padding-top: 5px;">Күні</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div id="certTemplate" style="display:none; padding: 50px; text-align: center; background: #fff; color: #1e293b; border: 10px solid #1e40af; width: 800px; height: 600px; position: absolute; top: -9999px;"><div style="border: 2px solid #fbbf24; padding: 40px; height: 100%; box-sizing: border-box;"><h1 style="color: #1e40af; font-size: 3rem; margin-bottom: 10px;">СЕРТИФИКАТ</h1><h3 style="color: #64748b; margin-top: 0;">ЖЕТІСТІГІ ҮШІН БЕРІЛДІ</h3><div style="margin: 40px 0;"><h2 id="certName" style="font-size: 2.5rem; text-decoration: underline;">Оқушы Аты</h2></div><p style="font-size: 1.2rem;">AXIOM AI платформасында 1000+ XP жинап, ҰБТ-ға дайындықта жоғары белсенділік танытқаны үшін марапатталады.</p><div style="margin-top: 50px; display: flex; justify-content: space-around;"><div><p style="font-weight: bold; border-top: 1px solid #000; padding-top: 5px;">AXIOM AI Басшылығы</p></div><div><p id="certDate" style="font-weight: bold; border-top: 1px solid #000; padding-top: 5px;">Күні</p></div></div></div></div>
 
         </main>
     </div>
