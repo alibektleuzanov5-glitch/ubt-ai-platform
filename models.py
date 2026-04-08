@@ -5,7 +5,7 @@ from database import Base
 from pydantic import BaseModel
 from typing import List, Optional
 
-# ================= 1. БАЗА МОДЕЛЬДЕРІ (SQLALCHEMY) =================
+# ================= 1. БАЗА МОДЕЛЬДЕРІ =================
 
 class User(Base):
     __tablename__ = "users"
@@ -19,6 +19,9 @@ class User(Base):
     avatar_url = Column(String, default="https://api.dicebear.com/7.x/bottts/svg?seed=Axiom") 
     theme = Column(String, default="dark")
     inventory = Column(JSON, default=list)
+    # ЖАҢА: Лигалар үшін
+    league = Column(String, default="Қола (Бронза)") 
+    weekly_xp = Column(Integer, default=0)
 
 class Course(Base):
     __tablename__ = "courses"
@@ -53,34 +56,30 @@ class StoreItem(Base):
     __tablename__ = "store_items"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    item_type = Column(String) # "avatar" немесе "theme"
+    item_type = Column(String)
     cost = Column(Integer)
     value = Column(String)
 
-# ================= 2. PYDANTIC СХЕМАЛАРЫ (API ҮШІН) =================
+# ЖАҢА: Симулятор нәтижелері
+class SimulatorResult(Base):
+    __tablename__ = "simulator_results"
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, index=True)
+    score = Column(Integer)
+    total_questions = Column(Integer)
+    ai_feedback = Column(String)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-class UserRegister(BaseModel):
-    name: str
-    email: str
-    password: str
+# ================= 2. PYDANTIC СХЕМАЛАРЫ =================
 
-class UserLogin(BaseModel):
-    email: str
-    password: str
+class UserRegister(BaseModel): name: str; email: str; password: str
+class UserLogin(BaseModel): email: str; password: str
+class ChatMessage(BaseModel): message: str
+class ErrorSubmit(BaseModel): topic: str; question: str; user_answer: str; correct_answer: str
+class StoreBuy(BaseModel): item_id: int
 
-class ChatMessage(BaseModel):
-    message: str
-
-class ErrorSubmit(BaseModel):
-    topic: str
-    question: str
-    user_answer: str
-    correct_answer: str
-
-class StoreBuy(BaseModel):
-    item_id: int
-
-class QuizRequest(BaseModel): topic: str
-class LessonRequest(BaseModel): topic: str
-class RoadmapRequest(BaseModel): target: str
-class CareerRequest(BaseModel): answers: str
+# ЖАҢА: Симуляторға сұраныс
+class SimulatorSubmit(BaseModel):
+    score: int
+    total: int
+    wrong_topics: List[str]

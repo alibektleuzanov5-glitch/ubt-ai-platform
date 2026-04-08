@@ -13,11 +13,9 @@
         <div class="auth-box">
             <h1>🚀 AXIOM AI</h1>
             <p>ҰБТ-ға ЖИ мұғаліммен дайындал!</p>
-            
-            <input type="text" id="reg-name" placeholder="Аты-жөніңіз (Тіркелу үшін)">
+            <input type="text" id="reg-name" placeholder="Аты-жөніңіз">
             <input type="email" id="auth-email" placeholder="Email">
             <input type="password" id="auth-password" placeholder="Құпия сөз">
-            
             <div class="auth-buttons">
                 <button onclick="login()">Кіру</button>
                 <button class="outline" onclick="register()">Тіркелу</button>
@@ -29,91 +27,82 @@
     <div id="main-app" style="display: none;">
         
         <aside class="sidebar">
-            <div class="logo">
-                <h2>Axiom <span>AI</span></h2>
-            </div>
-            
+            <div class="logo"><h2>Axiom <span>AI</span></h2></div>
             <div class="timer-widget">
-                <p>🍅 ФОКУС ТАЙМЕР</p>
+                <p>🍅 ФОКУС</p>
                 <h1 id="timer-display">25:00</h1>
                 <button onclick="toggleTimer()" id="timer-btn">Бастау</button>
             </div>
-
             <nav class="menu">
                 <a href="#" onclick="showSection('dashboard-section')">🏠 Басты бет</a>
                 <a href="#" onclick="showSection('courses-section')">📚 Курстар</a>
+                <a href="#" onclick="showSection('simulator-section')">📊 ҰБТ Симуляторы <span class="hot">ЖАҢА</span></a>
+                <a href="#" onclick="showSection('league-section')">🏆 Лигалар (Рейтинг)</a>
                 <a href="#" onclick="showSection('errors-section')">🧠 Қателер дәптері</a>
                 <a href="#" onclick="showSection('store-section')">🛒 Профиль / Дүкен</a>
-                <a href="#" style="opacity: 0.5">⚔️ 1v1 Жекпе-жек (Жақында)</a>
             </nav>
-            
             <button class="logout-btn" onclick="logout()">Шығу</button>
         </aside>
 
         <main class="content">
-            
             <header class="top-bar">
                 <div class="user-info">
-                    <img id="header-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=Axiom" alt="Avatar" width="40" style="border-radius: 50%; margin-right: 10px;">
-                    <span id="user-greeting">Сәлем, Оқушы!</span>
+                    <img id="header-avatar" src="" alt="Avatar" width="40" style="border-radius: 50%; margin-right: 10px;">
+                    <span id="user-greeting">Сәлем!</span>
                 </div>
                 <div class="stats">
                     <span class="xp-badge">🏆 <span id="user-xp">0</span> XP</span>
                     <span class="streak-badge">🔥 <span id="user-streak">0</span> күн</span>
+                    <span class="league-badge" id="user-league">Қола</span>
                 </div>
             </header>
 
             <div id="dashboard-section" class="content-section">
-                <div class="dashboard-grid">
-                    <div class="tasks-panel">
-                        <h3>🎯 Бүгінгі тапсырмалар</h3>
-                        <ul>
-                            <li>⏳ Жүйеге кіру (+10 XP)</li>
-                            <li>⏳ 1 сабақ оқу (+50 XP)</li>
-                            <li>⏳ 1 ЖИ тест тапсыру (+30 XP)</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="ai-chat-panel">
-                        <h3>🤖 ЖИ Мұғалім</h3>
-                        <div id="chat-box" class="chat-history"></div>
-                        <div class="chat-input-area">
-                            <input type="text" id="chat-input" placeholder="Сұрақ жазыңыз...">
-                            <button onclick="sendMessage()">Жіберу</button>
-                        </div>
+                <div class="ai-chat-panel">
+                    <h3>🤖 ЖИ Мұғалім (AI Tutor)</h3>
+                    <div id="chat-box" class="chat-history"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Кез келген есепті жазыңыз...">
+                        <button onclick="sendMessage()">Жіберу</button>
                     </div>
                 </div>
             </div>
 
-            <div id="courses-section" class="content-section" style="display: none;">
-                <h2>📚 Менің курстарым</h2>
-                <div id="courses-container" class="courses-grid">
-                    Курстар жүктелуде...
+            <div id="simulator-section" class="content-section" style="display: none;">
+                <h2>📊 ЖИ Диагностикасы (ҰБТ Симулятор)</h2>
+                <div id="sim-start">
+                    <p>Бұл 5 сұрақтан тұратын жылдам тест. Нәтижең бойынша ЖИ тәлімгер саған стратегиялық жоспар құрып береді.</p>
+                    <button class="primary-btn" onclick="startSimulator()">🔥 Тестті бастау</button>
+                </div>
+                <div id="sim-test" style="display: none;">
+                    <h3 id="sim-question-text" style="margin-bottom:20px;">Сұрақ...</h3>
+                    <div id="sim-options" class="options-grid"></div>
+                </div>
+                <div id="sim-result" style="display: none;" class="ai-feedback-box">
+                    <h3>Нәтиже: <span id="sim-score"></span>/5 дұрыс</h3>
+                    <p><b>🤖 ЖИ Тәлімгердің стратегиясы:</b></p>
+                    <div id="sim-ai-text">Талдануда...</div>
+                    <button class="primary-btn" onclick="showSection('dashboard-section')" style="margin-top:20px;">Түсіндім</button>
                 </div>
             </div>
 
-            <div id="errors-section" class="content-section" style="display: none;">
-                <h2>🧠 Қателер дәптері</h2>
-                <p>Бұл жерде сенің қателескен сұрақтарың сақталады. ЖИ мұғаліммен бірге талдап, жаңа есептер шығар.</p>
-                <div id="errors-container" class="errors-grid">
-                    Жүктелуде...
+            <div id="league-section" class="content-section" style="display: none;">
+                <div class="league-header">
+                    <h2>🏆 <span id="current-league-title">Қола Лигасы</span></h2>
+                    <p>Апта сайын ең көп XP жинаған топ 10 оқушы келесі лигаға өтеді!</p>
+                </div>
+                <div class="leaderboard-container">
+                    <table class="leaderboard-table">
+                        <thead><tr><th>Орын</th><th>Оқушы</th><th>Апталық XP</th></tr></thead>
+                        <tbody id="leaderboard-body"> Жүктелуде... </tbody>
+                    </table>
                 </div>
             </div>
 
+            <div id="courses-section" class="content-section" style="display: none;"><h2>📚 Курстар</h2><div id="courses-container" class="courses-grid"></div></div>
+            <div id="errors-section" class="content-section" style="display: none;"><h2>🧠 Қателер дәптері</h2><div id="errors-container" class="errors-grid"></div></div>
             <div id="store-section" class="content-section" style="display: none;">
-                <div class="profile-header">
-                    <img id="user-avatar-large" src="https://api.dicebear.com/7.x/bottts/svg?seed=Axiom" alt="Avatar" class="profile-avatar">
-                    <div>
-                        <h2 id="profile-name">Оқушы</h2>
-                        <p class="xp-badge" style="font-size: 1.2rem;">🏆 <span id="profile-xp">0</span> XP бар</p>
-                    </div>
-                </div>
-
-                <h3>🛒 Эксклюзивті Дүкен</h3>
-                <p>Жиналған XP-ге профиліңе жаңа аватарлар сатып ал!</p>
-                <div id="store-container" class="store-grid">
-                    Жүктелуде...
-                </div>
+                <h2>🛒 Дүкен</h2><p>Жиналған XP-ге жаңа аватарлар сатып ал!</p><div id="store-container" class="store-grid"></div>
             </div>
 
         </main>
