@@ -1,7 +1,11 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON
+from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 from database import Base
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List, Optional
+
+# ================= 1. БАЗА МОДЕЛЬДЕРІ (SQLALCHEMY) =================
 
 class User(Base):
     __tablename__ = "users"
@@ -9,33 +13,55 @@ class User(Base):
     name = Column(String, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    role = Column(String, default="student")
     xp = Column(Integer, default=0)
     streak = Column(Integer, default=0)
     last_active_date = Column(String, default="")
+    # ЖАҢА ФУНКЦИЯЛАР ҮШІН:
+    avatar_url = Column(String, default="https://api.dicebear.com/7.x/bottts/svg?seed=Axiom") 
+    theme = Column(String, default="dark")
+    inventory = Column(JSON, default=list) # Сатып алған заттары
 
 class Course(Base):
     __tablename__ = "courses"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    description = Column(Text)
+    title = Column(String, index=True)
+    description = Column(String)
     image_url = Column(String)
 
 class Module(Base):
     __tablename__ = "modules"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
+    title = Column(String, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"))
 
 class Lesson(Base):
     __tablename__ = "lessons"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    video_url = Column(String, nullable=True)
-    content = Column(Text, nullable=True)
+    title = Column(String, index=True)
     module_id = Column(Integer, ForeignKey("modules.id"))
 
-# --- Pydantic моделдері (Фронтендтен келетін сұраныстар үшін) ---
+# [ЖАҢА] Қателер дәптері
+class ErrorRecord(Base):
+    __tablename__ = "error_records"
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, index=True)
+    topic = Column(String)
+    question = Column(String)
+    user_answer = Column(String)
+    correct_answer = Column(String)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+# [ЖАҢА] XP Дүкені
+class StoreItem(Base):
+    __tablename__ = "store_items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    item_type = Column(String) # "avatar", "theme"
+    cost = Column(Integer)
+    value = Column(String) # сурет сілтемесі немесе түс коды
+
+# ================= 2. PYDANTIC СХЕМАЛАРЫ =================
+
 class UserRegister(BaseModel):
     name: str
     email: str
@@ -48,5 +74,11 @@ class UserLogin(BaseModel):
 class ChatMessage(BaseModel):
     message: str
 
-class WeaknessRequest(BaseModel):
-    questions: List[str]
+class ErrorSubmit(BaseModel):
+    topic: str
+    question: str
+    user_answer: str
+    correct_answer: str
+
+class StoreBuy(BaseModel):
+    item_id: int

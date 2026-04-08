@@ -1,128 +1,85 @@
-import os
-import json
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Header
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from passlib.context import CryptContext
-import jwt
-from datetime import datetime, timedelta, timezone
-from groq import Groq
-from dotenv import load_dotenv
-from database import get_db, engine
-from pydantic import BaseModel
-import models
+# =====================================================================
+#                        ЖАҢА СУПЕР ФУНКЦИЯЛАР
+# =====================================================================
 
-load_dotenv()
-router = APIRouter()
+# 1. ҚАТЕЛЕР ДӘПТЕРІ - Қатені сақтау
+@router.post("/errors/save")
+def save_error(req: models.ErrorSubmit, authorization: str = Header(None), db: Session = Depends(get_db)):
+    email = get_user_email_from_token(authorization)
+    if not email: raise HTTPException(status_code=401, detail="Авторизациядан өтіңіз")
+    
+    new_error = models.ErrorRecord(
+        user_email=email, topic=req.topic, question=req.question,
+        user_answer=req.user_answer, correct_answer=req.correct_answer
+    )
+    db.add(new_error)
+    db.commit()
+    return {"message": "Қате дәптерге сақталды!"}
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "diplomdyq_jumys_super_secret_key"
-ALGORITHM = "HS256"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-ai_client = Groq(api_key=GROQ_API_KEY)
+# Қателерді көру
+@router.get("/errors")
+def get_errors(authorization: str = Header(None), db: Session = Depends(get_db)):
+    email = get_user_email_from_token(authorization)
+    if not email: raise HTTPException(status_code=401, detail="Авторизациядан өтіңіз")
+    errors = db.query(models.ErrorRecord).filter(models.ErrorRecord.user_email == email).order_by(models.ErrorRecord.created_at.desc()).all()
+    return errors
 
-class QuizRequest(BaseModel): topic: str
-class LessonRequest(BaseModel): topic: str
-class RoadmapRequest(BaseModel): target: str
-class CareerRequest(BaseModel): answers: str
+# AI арқылы қатеге ұқсас жаңа есеп сұрау
+@router.post("/errors/practice")
+def practice_error(req: models.ErrorSubmit, authorization: str = Header(None)):
+    prompt = f"Оқушы '{req.topic}' тақырыбында мына сұрақтан қате жіберді: '{req.question}'. Оның жауабы: {req.user_answer}. Дұрыс жауап: {req.correct_answer}. Оқушыға қатесін қысқаша түсіндіріп, дәл осыған ұқсас 1 ЖАҢА есеп (жауап нұсқаларымен) құрастырып бер."
+    try:
+        comp = ai_client.chat.completions.create(
+            messages=[{"role": "system", "content": "Сен ҰБТ мұғалімісің. LaTeX қолдан."}, {"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant"
+        )
+        return {"reply": comp.choices[0].message.content}
+    except:
+        return {"reply": "Қате кетті."}
 
-def get_password_hash(password): return pwd_context.hash(password[:70])
-def verify_password(plain_password, hashed_password): return pwd_context.verify(plain_password[:70], hashed_password)
+# 2. XP ДҮКЕНІ - Заттарды көру
+@router.get("/store")
+def get_store_items(db: Session = Depends(get_db)):
+    # Егер дүкен бос болса, базаға автоматты түрде заттар қосамыз
+    if db.query(models.StoreItem).count() == 0:
+        items = [
+            models.StoreItem(name="Отты Аватар", item_type="avatar", cost=500, value="https://api.dicebear.com/7.x/bottts/svg?seed=Fire"),
+            models.StoreItem(name="Хакер Аватар", item_type="avatar", cost=1000, value="https://api.dicebear.com/7.x/bottts/svg?seed=Hacker"),
+            models.StoreItem(name="Космос тақырыбы", item_type="theme", cost=2000, value="space-dark")
+        ]
+        db.add_all(items)
+        db.commit()
+    return db.query(models.StoreItem).all()
 
-def create_access_token(data: dict):
-    to_encode = data.copy(); expire = datetime.now(timezone.utc) + timedelta(days=7); to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+# Дүкеннен зат сатып алу
+@router.post("/store/buy")
+def buy_item(req: models.StoreBuy, authorization: str = Header(None), db: Session = Depends(get_db)):
+    email = get_user_email_from_token(authorization)
+    if not email: raise HTTPException(status_code=401, detail="Авторизациядан өтіңіз")
+    
+    user = db.query(models.User).filter(models.User.email == email).first()
+    item = db.query(models.StoreItem).filter(models.StoreItem.id == req.item_id).first()
+    
+    if not item: raise HTTPException(status_code=404, detail="Зат табылмады")
+    if user.xp < item.cost: raise HTTPException(status_code=400, detail="XP жеткіліксіз!")
+    
+    # XP алу және инвентарьға қосу
+    user.xp -= item.cost
+    inventory = list(user.inventory) if user.inventory else []
+    inventory.append(item.name)
+    user.inventory = inventory
+    
+    if item.item_type == "avatar": user.avatar_url = item.value
+    elif item.item_type == "theme": user.theme = item.value
+        
+    db.commit()
+    return {"message": "Сәтті сатып алынды!", "new_xp": user.xp, "avatar_url": user.avatar_url}
 
-def add_xp_to_user(token: str, points: int, db: Session):
+# Токеннен email алуға арналған көмекші функция (жоғарыға қоссаң да болады)
+def get_user_email_from_token(token: str):
     if not token: return None
     try:
         if token.startswith("Bearer "): token = token.split(" ")[1]
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]); email = payload.get("sub")
-        if email:
-            user = db.query(models.User).filter(models.User.email == email).first()
-            if user:
-                user.xp += points
-                today = datetime.now(timezone.utc).strftime("%Y-%m-%d"); yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
-                if user.last_active_date == today: pass 
-                elif user.last_active_date == yesterday: user.streak += 1; user.last_active_date = today
-                else: user.streak = 1; user.last_active_date = today
-                db.commit(); db.refresh(user)
-                return {"xp": user.xp, "streak": user.streak}
-    except: pass
-    return None
-
-@router.post("/register")
-def register(user: models.UserRegister, db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.email == user.email).first(): raise HTTPException(status_code=400, detail="Email тіркелген")
-    db.add(models.User(name=user.name, email=user.email, hashed_password=get_password_hash(user.password))); db.commit(); return {"message": "Сәтті!"}
-
-@router.post("/login")
-def login(user: models.UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.hashed_password): raise HTTPException(status_code=400, detail="Қате мәлімет")
-    return {"access_token": create_access_token({"sub": db_user.email}), "name": db_user.name, "xp": db_user.xp, "streak": db_user.streak}
-
-@router.get("/courses-full")
-def get_all_courses_with_modules(db: Session = Depends(get_db)):
-    courses = db.query(models.Course).all()
-    return [{"title": c.title, "image_url": c.image_url, "modules": [{"title": m.title, "lessons": [{"title": l.title} for l in db.query(models.Lesson).filter(models.Lesson.module_id == m.id).all()]} for m in db.query(models.Module).filter(models.Module.course_id == c.id).all()]} for c in courses]
-
-@router.post("/generate-lesson")
-def generate_lesson(req: LessonRequest, authorization: str = Header(None)):
-    try:
-        comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "Мәтінді әдемілеп бер."}, {"role": "user", "content": f"'{req.topic}' тақырыбы бойынша оқушыға түсінікті қысқаша конспект, негізгі формулалар (LaTeX) және 1 мысал жазып бер. Markdown форматында қайтар."}], model="llama-3.1-8b-instant")
-        return {"content": comp.choices[0].message.content}
-    except Exception as e: return {"content": "Конспект жасау кезінде қате кетті."}
-
-@router.post("/generate-quiz")
-def generate_quiz(req: QuizRequest, authorization: str = Header(None)):
-    try:
-        comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "Сен тек JSON қайтарасың."}, {"role": "user", "content": f"'{req.topic}' тақырыбы бойынша 3 тест сұрағын құрастыр. ЖАУАПТЫ ТЕК ҚАТАҢ JSON ФОРМАТЫНДА ҚАЙТАР: [{{\"q\":\"Сұрақ?\",\"options\":[\"1\",\"2\",\"3\",\"4\"],\"ans\":\"Дұрыс\"}}]" }], model="llama-3.1-8b-instant")
-        return {"quiz": json.loads(comp.choices[0].message.content.replace("```json", "").replace("```", "").strip())}
-    except Exception as e: return {"quiz": [{"q": "Қате кетті", "options": ["ОК"], "ans": "ОК"}]}
-
-@router.post("/generate-flashcards")
-def generate_flashcards(req: LessonRequest, authorization: str = Header(None)):
-    try:
-        comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "Сен тек JSON қайтарасың."}, {"role": "user", "content": f"'{req.topic}' тақырыбы бойынша есте сақтауға арналған 4 флешкарта құрастыр. ЖАУАПТЫ ТЕК ҚАТАҢ JSON ФОРМАТЫНДА ҚАЙТАР: [{{\"front\":\"Термин\", \"back\":\"Анықтамасы\"}}]" }], model="llama-3.1-8b-instant")
-        return {"cards": json.loads(comp.choices[0].message.content.replace("```json", "").replace("```", "").strip())}
-    except Exception as e: return {"cards": []}
-
-@router.post("/generate-roadmap")
-def generate_roadmap(req: RoadmapRequest, authorization: str = Header(None)):
-    try:
-        comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "Сен тәжірибелі ҰБТ тәлімгерісің."}, {"role": "user", "content": f"Оқушының мақсаты: '{req.target}'. Осы мақсатқа жету үшін ҰБТ-ға дайындықтың мотивациялық, 4 апталық нақты оқу жоспарын жасап бер. Markdown қолдан."}], model="llama-3.1-8b-instant")
-        return {"roadmap": comp.choices[0].message.content}
-    except Exception as e: return {"roadmap": "Қате кетті."}
-
-@router.post("/generate-career")
-def generate_career(req: CareerRequest, authorization: str = Header(None)):
-    try:
-        comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "Сен кәсіби профориентологсың."}, {"role": "user", "content": f"Оқушының қызығушылықтары: '{req.answers}'. Осыған қарап 1 мамандық, 1 Қазақстандық университет және ҰБТ бейіндік пәндерін ұсын. Мотивациялық мәтін жаз. Markdown қолдан."}], model="llama-3.1-8b-instant")
-        return {"career": comp.choices[0].message.content}
-    except Exception as e: return {"career": "Қате кетті."}
-
-@router.post("/chat-vision")
-def chat_with_vision(req: models.ChatMessage, authorization: str = Header(None), db: Session = Depends(get_db)):
-    comp = ai_client.chat.completions.create(messages=[{"role": "user", "content": [{"type": "text", "text": "Бұл есепті шығарып бер."}, {"type": "image_url", "image_url": {"url": req.message}}]}], model="llama-3.2-11b-vision-preview")
-    stats = add_xp_to_user(authorization, 15, db); return {"reply": comp.choices[0].message.content, "new_xp": stats["xp"] if stats else None}
-
-@router.post("/chat")
-def chat_with_ai(req: models.ChatMessage, authorization: str = Header(None), db: Session = Depends(get_db)):
-    comp = ai_client.chat.completions.create(messages=[{"role": "system", "content": "LaTeX қолдан."}, {"role": "user", "content": req.message}], model="llama-3.1-8b-instant")
-    stats = add_xp_to_user(authorization, 10, db); return {"reply": comp.choices[0].message.content, "new_xp": stats["xp"] if stats else None}
-
-@router.get("/leaderboard")
-def get_leaderboard(db: Session = Depends(get_db)): return [{"name": u.name, "xp": u.xp} for u in db.query(models.User).order_by(models.User.xp.desc()).limit(10).all()]
-
-@router.post("/add-xp")
-def add_custom_xp(req: dict, authorization: str = Header(None), db: Session = Depends(get_db)):
-    stats = add_xp_to_user(authorization, req.get("points", 0), db); return {"new_xp": stats["xp"] if stats else None}
-
-@router.get("/admin/stats")
-def get_admin_stats(db: Session = Depends(get_db)):
-    total_users = db.query(models.User).count()
-    total_xp = db.query(func.sum(models.User.xp)).scalar() or 0
-    top_user = db.query(models.User).order_by(models.User.xp.desc()).first()
-    return {"total_users": total_users, "total_xp": total_xp, "top_user": top_user.name if top_user else "Жоқ"}
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except: return None
