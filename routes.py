@@ -25,7 +25,7 @@ ai_client = Groq(api_key=GROQ_API_KEY)
 class QuizRequest(BaseModel): topic: str
 class LessonRequest(BaseModel): topic: str
 class RoadmapRequest(BaseModel): target: str
-class CareerRequest(BaseModel): answers: str # ЖАҢА
+class CareerRequest(BaseModel): answers: str
 
 def get_password_hash(password): return pwd_context.hash(password[:70])
 def verify_password(plain_password, hashed_password): return pwd_context.verify(plain_password[:70], hashed_password)
@@ -52,33 +52,6 @@ def add_xp_to_user(token: str, points: int, db: Session):
     except: pass
     return None
 
-def auto_seed_data(db: Session):
-    try:
-        if db.query(models.Course).count() > 0: return 
-        c1 = models.Course(id=1, title="Математикалық сауаттылық", description="2026", image_url="https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&q=80")
-        c2 = models.Course(id=2, title="Математика", description="2026", image_url="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&q=80")
-        c3 = models.Course(id=3, title="Информатика", description="2026", image_url="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&q=80")
-        db.add_all([c1, c2, c3]); db.commit()
-
-        modules = [
-            models.Module(id=1, title="Сандық талқылау", course_id=1), models.Module(id=2, title="Анықсыздық", course_id=1),
-            models.Module(id=5, title="Сандар", course_id=2), models.Module(id=6, title="Теңдеулер", course_id=2),
-            models.Module(id=15, title="Компьютерлік жүйелер", course_id=3)
-        ]
-        db.add_all(modules); db.commit()
-
-        raw_lessons = [
-            (1, "Сандық өрнектермен берілген логикалық тапсырмалар"), (2, "Арифметикалық орта, құлаш, медиана, мода"),
-            (5, "Түбірлерге амалдар қолдану. Дәрежелерге амалдар қолдану"), (6, "Сызықтық және квадрат теңдеулер"),
-            (15, "Компьютердің құрылғылары. Компьютерлік желілер")
-        ]
-        lessons_to_add = []
-        for mod_id, text_block in raw_lessons:
-            for part in text_block.split('.'):
-                if part.strip(): lessons_to_add.append(models.Lesson(title=part.strip(), module_id=mod_id))
-        db.add_all(lessons_to_add); db.commit()
-    except Exception as e: db.rollback()
-
 @router.post("/register")
 def register(user: models.UserRegister, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == user.email).first(): raise HTTPException(status_code=400, detail="Email тіркелген")
@@ -88,7 +61,6 @@ def register(user: models.UserRegister, db: Session = Depends(get_db)):
 def login(user: models.UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if not db_user or not verify_password(user.password, db_user.hashed_password): raise HTTPException(status_code=400, detail="Қате мәлімет")
-    auto_seed_data(db)
     return {"access_token": create_access_token({"sub": db_user.email}), "name": db_user.name, "xp": db_user.xp, "streak": db_user.streak}
 
 @router.get("/courses-full")
@@ -124,7 +96,6 @@ def generate_roadmap(req: RoadmapRequest, authorization: str = Header(None)):
         return {"roadmap": comp.choices[0].message.content}
     except Exception as e: return {"roadmap": "Қате кетті."}
 
-# ЖАҢА: ЖИ МАМАНДЫҚ ТАҢДАУШЫ (CAREER PREDICTOR)
 @router.post("/generate-career")
 def generate_career(req: CareerRequest, authorization: str = Header(None)):
     try:

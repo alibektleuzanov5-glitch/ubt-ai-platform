@@ -2,10 +2,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from routes import router
-from database import engine, Base
+from database import engine, Base, SessionLocal
 import uvicorn
+import models
+from seed import seed_data
 
+# База құрылымын жасау
 Base.metadata.create_all(bind=engine)
+
+# МАҢЫЗДЫ: Егер серверде база бос болса, кешегі жаңа сабақтарды жүктейміз
+db = SessionLocal()
+if db.query(models.Course).count() == 0:
+    print("База бос екен. Жаңа 2026 тақырыптарын жүктеп жатырмын...")
+    seed_data()
+db.close()
 
 app = FastAPI()
 
@@ -17,12 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# МІНЕ, ЕҢ МАҢЫЗДЫ ЖОЛ - /api осында тұр
 app.include_router(router, prefix="/api")
 
 @app.get("/")
 def home():
-    return {"message": "Backend is running!"}
+    return {"message": "AXIOM AI Backend is running!"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
