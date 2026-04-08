@@ -2,112 +2,61 @@
 <html lang="kk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AXIOM AI - ҰБТ Дайындық Платформасы</title>
+    <title>AXIOM AI</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-
     <div id="auth-section" class="auth-container">
         <div class="auth-box">
             <h1>🚀 AXIOM AI</h1>
-            <p>ҰБТ-ға ЖИ мұғаліммен дайындал!</p>
             <input type="text" id="reg-name" placeholder="Аты-жөніңіз">
             <input type="email" id="auth-email" placeholder="Email">
             <input type="password" id="auth-password" placeholder="Құпия сөз">
-            <div class="auth-buttons">
-                <button onclick="login()">Кіру</button>
-                <button class="outline" onclick="register()">Тіркелу</button>
-            </div>
-            <p id="auth-error" class="error-text"></p>
+            <button onclick="login()">Кіру</button>
+            <button onclick="register()">Тіркелу</button>
         </div>
     </div>
 
     <div id="main-app" style="display: none;">
-        
         <aside class="sidebar">
-            <div class="logo"><h2>Axiom <span>AI</span></h2></div>
-            <div class="timer-widget">
-                <p>🍅 ФОКУС</p>
-                <h1 id="timer-display">25:00</h1>
-                <button onclick="toggleTimer()" id="timer-btn">Бастау</button>
-            </div>
+            <h2>Axiom AI</h2>
             <nav class="menu">
-                <a href="#" onclick="showSection('dashboard-section')">🏠 Басты бет</a>
-                <a href="#" onclick="showSection('courses-section')">📚 Курстар</a>
-                <a href="#" onclick="showSection('simulator-section')">📊 ҰБТ Симуляторы <span class="hot">ЖАҢА</span></a>
-                <a href="#" onclick="showSection('league-section')">🏆 Лигалар (Рейтинг)</a>
-                <a href="#" onclick="showSection('errors-section')">🧠 Қателер дәптері</a>
-                <a href="#" onclick="showSection('store-section')">🛒 Профиль / Дүкен</a>
+                <a href="#" onclick="show('dashboard-section')">🏠 Чат</a>
+                <a href="#" onclick="show('simulator-section')">📊 Симулятор</a>
+                <a href="#" onclick="show('league-section')">🏆 Лига</a>
+                <a href="#" onclick="show('errors-section')">🧠 Қателер</a>
+                <a href="#" onclick="show('store-section')">🛒 Профиль</a>
             </nav>
-            <button class="logout-btn" onclick="logout()">Шығу</button>
+            <button onclick="logout()">Шығу</button>
         </aside>
 
         <main class="content">
             <header class="top-bar">
-                <div class="user-info">
-                    <img id="header-avatar" src="" alt="Avatar" width="40" style="border-radius: 50%; margin-right: 10px;">
-                    <span id="user-greeting">Сәлем!</span>
-                </div>
-                <div class="stats">
-                    <span class="xp-badge">🏆 <span id="user-xp">0</span> XP</span>
-                    <span class="streak-badge">🔥 <span id="user-streak">0</span> күн</span>
-                    <span class="league-badge" id="user-league">Қола</span>
-                </div>
+                <div><img id="header-avatar" src="" width="40"><span id="user-greeting"></span></div>
+                <div class="stats">XP: <span id="user-xp"></span> | <span id="user-league"></span></div>
             </header>
 
-            <div id="dashboard-section" class="content-section">
-                <div class="ai-chat-panel">
-                    <h3>🤖 ЖИ Мұғалім (AI Tutor)</h3>
-                    <div id="chat-box" class="chat-history"></div>
-                    <div class="chat-input-area">
-                        <input type="text" id="chat-input" placeholder="Кез келген есепті жазыңыз...">
-                        <button onclick="sendMessage()">Жіберу</button>
-                    </div>
-                </div>
+            <div id="dashboard-section" class="section"><div id="chat-box"></div><input id="chat-input"><button onclick="sendMsg()">Жіберу</button></div>
+            
+            <div id="simulator-section" class="section" style="display:none;">
+                <div id="sim-start"><button onclick="startSim()">Тестті бастау</button></div>
+                <div id="sim-test" style="display:none;"><h3 id="sim-q"></h3><div id="sim-opts"></div></div>
+                <div id="sim-res" style="display:none;"><h3 id="sim-score"></h3><p id="sim-ai"></p></div>
             </div>
 
-            <div id="simulator-section" class="content-section" style="display: none;">
-                <h2>📊 ЖИ Диагностикасы (ҰБТ Симулятор)</h2>
-                <div id="sim-start">
-                    <p>Бұл 5 сұрақтан тұратын жылдам тест. Нәтижең бойынша ЖИ тәлімгер саған стратегиялық жоспар құрып береді.</p>
-                    <button class="primary-btn" onclick="startSimulator()">🔥 Тестті бастау</button>
-                </div>
-                <div id="sim-test" style="display: none;">
-                    <h3 id="sim-question-text" style="margin-bottom:20px;">Сұрақ...</h3>
-                    <div id="sim-options" class="options-grid"></div>
-                </div>
-                <div id="sim-result" style="display: none;" class="ai-feedback-box">
-                    <h3>Нәтиже: <span id="sim-score"></span>/5 дұрыс</h3>
-                    <p><b>🤖 ЖИ Тәлімгердің стратегиясы:</b></p>
-                    <div id="sim-ai-text">Талдануда...</div>
-                    <button class="primary-btn" onclick="showSection('dashboard-section')" style="margin-top:20px;">Түсіндім</button>
-                </div>
+            <div id="league-section" class="section" style="display:none;">
+                <h2 id="league-title"></h2><table id="leaderboard"></table>
             </div>
 
-            <div id="league-section" class="content-section" style="display: none;">
-                <div class="league-header">
-                    <h2>🏆 <span id="current-league-title">Қола Лигасы</span></h2>
-                    <p>Апта сайын ең көп XP жинаған топ 10 оқушы келесі лигаға өтеді!</p>
-                </div>
-                <div class="leaderboard-container">
-                    <table class="leaderboard-table">
-                        <thead><tr><th>Орын</th><th>Оқушы</th><th>Апталық XP</th></tr></thead>
-                        <tbody id="leaderboard-body"> Жүктелуде... </tbody>
-                    </table>
-                </div>
+            <div id="errors-section" class="section" style="display:none;"><div id="errors-container"></div></div>
+            
+            <div id="store-section" class="section" style="display:none;">
+                <button onclick="getParentCode()" style="background:green;color:white;padding:10px;margin-bottom:20px;">Ата-ана кодын алу (Telegram)</button>
+                <p id="parent-code-display" style="font-size:1.5rem;font-weight:bold;color:#3b82f6;"></p>
+                <div id="store-container" style="display:flex;gap:20px;"></div>
             </div>
-
-            <div id="courses-section" class="content-section" style="display: none;"><h2>📚 Курстар</h2><div id="courses-container" class="courses-grid"></div></div>
-            <div id="errors-section" class="content-section" style="display: none;"><h2>🧠 Қателер дәптері</h2><div id="errors-container" class="errors-grid"></div></div>
-            <div id="store-section" class="content-section" style="display: none;">
-                <h2>🛒 Дүкен</h2><p>Жиналған XP-ге жаңа аватарлар сатып ал!</p><div id="store-container" class="store-grid"></div>
-            </div>
-
         </main>
     </div>
-
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="app.js"></script>
