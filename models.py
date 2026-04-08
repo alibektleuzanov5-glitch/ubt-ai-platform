@@ -16,10 +16,9 @@ class User(Base):
     xp = Column(Integer, default=0)
     streak = Column(Integer, default=0)
     last_active_date = Column(String, default="")
-    # ЖАҢА ФУНКЦИЯЛАР ҮШІН:
     avatar_url = Column(String, default="https://api.dicebear.com/7.x/bottts/svg?seed=Axiom") 
     theme = Column(String, default="dark")
-    inventory = Column(JSON, default=list) # Сатып алған заттары
+    inventory = Column(JSON, default=list)
 
 class Course(Base):
     __tablename__ = "courses"
@@ -40,7 +39,6 @@ class Lesson(Base):
     title = Column(String, index=True)
     module_id = Column(Integer, ForeignKey("modules.id"))
 
-# [ЖАҢА] Қателер дәптері
 class ErrorRecord(Base):
     __tablename__ = "error_records"
     id = Column(Integer, primary_key=True, index=True)
@@ -51,16 +49,15 @@ class ErrorRecord(Base):
     correct_answer = Column(String)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-# [ЖАҢА] XP Дүкені
 class StoreItem(Base):
     __tablename__ = "store_items"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    item_type = Column(String) # "avatar", "theme"
+    item_type = Column(String) # "avatar" немесе "theme"
     cost = Column(Integer)
-    value = Column(String) # сурет сілтемесі немесе түс коды
+    value = Column(String)
 
-# ================= 2. PYDANTIC СХЕМАЛАРЫ =================
+# ================= 2. PYDANTIC СХЕМАЛАРЫ (API ҮШІН) =================
 
 class UserRegister(BaseModel):
     name: str
@@ -82,3 +79,8 @@ class ErrorSubmit(BaseModel):
 
 class StoreBuy(BaseModel):
     item_id: int
+
+class QuizRequest(BaseModel): topic: str
+class LessonRequest(BaseModel): topic: str
+class RoadmapRequest(BaseModel): target: str
+class CareerRequest(BaseModel): answers: str
